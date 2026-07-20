@@ -50,12 +50,11 @@ Authenticate ZCLI without putting credentials in project files:
 
 ```bash
 pnpm exec zcli login -i
-pnpm --filter @resolve/zendesk-app build
+pnpm --filter @resolve/zendesk-app package:zip
 pnpm zaf:validate
-pnpm zaf:package
 ```
 
-ZCLI writes the installation ZIP under `apps/zendesk/dist/tmp/`.
+The package script uses Zendesk ZCLI's Archiver implementation and writes `Resolve-v<version>-zendesk.zip` under `apps/zendesk/dist/tmp/`.
 
 The local ZCLI server does not substitute secure settings. Use an installed app in a Zendesk test account to verify the real proxy-injection path.
 

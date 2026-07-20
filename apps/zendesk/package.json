@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build && node scripts/package-app.mjs",
+    "package:zip": "pnpm build && node scripts/create-zendesk-zip.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
@@ -21,6 +22,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
+    "@zendesk/zcli-apps": "^1.1.0",
     "jsdom": "^29.1.1",
     "vite": "^8.1.5",
     "vitest": "^4.1.10"

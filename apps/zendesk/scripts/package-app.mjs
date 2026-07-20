@@ -1,4 +1,4 @@
-import { cp, mkdir, rm } from "node:fs/promises";
+import { cp, mkdir, readFile, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,3 +16,13 @@ await cp(
   resolve(dist, "translations"),
   { recursive: true },
 );
+
+const iframeHtml = await readFile(
+  resolve(dist, "assets", "index.html"),
+  "utf8",
+);
+if (/(?:src|href)="\/(?!\/)/.test(iframeHtml)) {
+  throw new Error(
+    "Zendesk iframe contains root-absolute asset URLs; configure Vite base as './'.",
+  );
+}

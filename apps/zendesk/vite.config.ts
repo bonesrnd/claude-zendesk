@@ -3,6 +3,7 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   root: "src",
+  base: "./",
   plugins: [react()],
   publicDir: false,
   build: {
