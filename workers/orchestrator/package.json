@@ -1,0 +1,22 @@
+{
+  "name": "@resolve/orchestrator",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "wrangler deploy --dry-run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.112.2",
+    "@resolve/contracts": "workspace:*",
+    "@resolve/skill-sdk": "workspace:*",
+    "@resolve/skills": "workspace:*",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.18.6",
+    "vitest": "^4.1.10",
+    "wrangler": "^4.112.0"
+  }
+}

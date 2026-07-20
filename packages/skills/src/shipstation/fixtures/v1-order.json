@@ -1,0 +1,22 @@
+{
+  "orderId": 445566,
+  "orderNumber": "10982",
+  "orderStatus": "awaiting_shipment",
+  "orderDate": "2026-07-17T15:30:00.0000000",
+  "customerEmail": "maya@example.com",
+  "amountPaid": 64,
+  "carrierCode": "ups",
+  "serviceCode": "ups_ground",
+  "shipTo": {
+    "name": "Maya Chen",
+    "phone": "+1-555-0100"
+  },
+  "items": [
+    {
+      "name": "Canvas Tote",
+      "quantity": 2,
+      "sku": "TOTE-NAT"
+    }
+  ],
+  "tagIds": [1234]
+}

@@ -1,0 +1,221 @@
+import { useEffect, useState, useSyncExternalStore } from "react";
+
+import { parseVisibleSettings, WorkerClient } from "../api/worker-client";
+import {
+  ChatController,
+  type ChatState,
+} from "../features/chat/chat-controller";
+import { Composer } from "../features/chat/components/Composer";
+import { Conversation } from "../features/chat/components/Conversation";
+import { ErrorNotice } from "../features/chat/components/ErrorNotice";
+import { SkillsManager } from "../features/skills/SkillsManager";
+import {
+  getTicketContext,
+  type ActiveTicketContext,
+} from "../features/ticket/ticket-context";
+import { executeZendeskTool } from "../features/zendesk-tools/executor";
+import { useZafClient } from "./ZafClientProvider";
+
+type View = "chat" | "history" | "skills";
+
+interface ReadyApp {
+  context: ActiveTicketContext;
+  worker: WorkerClient;
+  controller: ChatController;
+}
+
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.slice(0, 1))
+    .join("")
+    .toUpperCase();
+}
+
+function Workspace({ ready }: { ready: ReadyApp }) {
+  const [view, setView] = useState<View>("chat");
+  const state = useSyncExternalStore(
+    ready.controller.subscribe,
+    ready.controller.getSnapshot,
+    ready.controller.getSnapshot,
+  );
+  const busy =
+    state.status === "submitting" || state.status === "loading_history";
+
+  async function send(message: string) {
+    await ready.controller.send(message, ready.context);
+  }
+
+  return (
+    <main className="app-shell">
+      <header className="app-header">
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true">
+            R
+          </span>
+          <h1>Resolve</h1>
+        </div>
+        <nav aria-label="Resolve views">
+          <button
+            type="button"
+            className={view === "history" ? "is-active" : ""}
+            onClick={() => setView("history")}
+          >
+            History
+          </button>
+          <button
+            type="button"
+            className={view === "skills" ? "is-active" : ""}
+            onClick={() => setView("skills")}
+          >
+            Skills
+          </button>
+          <button
+            type="button"
+            className="new-chat"
+            onClick={() => {
+              ready.controller.newConversation();
+              setView("chat");
+            }}
+          >
+            New
+          </button>
+        </nav>
+      </header>
+
+      <section className="ticket-context" aria-label="Active ticket">
+        <span className="customer-avatar" aria-hidden="true">
+          {initials(ready.context.ticket.requester.name)}
+        </span>
+        <div>
+          <strong>{ready.context.ticket.requester.name}</strong>
+          <span>
+            {ready.context.ticket.requester.email ?? "No requester email"}
+          </span>
+        </div>
+        <span className="ticket-pill">#{ready.context.ticket.ticketId}</span>
+      </section>
+
+      {view === "chat" && (
+        <div className="chat-view">
+          <Conversation messages={state.messages} />
+          {state.error && <ErrorNotice error={state.error} />}
+          <Composer disabled={busy} onSend={send} />
+        </div>
+      )}
+
+      {view === "history" && (
+        <HistoryView
+          state={state}
+          onOpen={(conversationId) => {
+            void ready.controller.openConversation(conversationId);
+            setView("chat");
+          }}
+        />
+      )}
+
+      {view === "skills" && (
+        <SkillsManager
+          worker={ready.worker}
+          ticketId={ready.context.ticket.ticketId}
+        />
+      )}
+    </main>
+  );
+}
+
+function HistoryView({
+  state,
+  onOpen,
+}: {
+  state: ChatState;
+  onOpen: (conversationId: string) => void;
+}) {
+  return (
+    <section className="history-view">
+      <div className="view-heading">
+        <span className="eyebrow">Ticket continuity</span>
+        <h2>Conversation history</h2>
+        <p>Retained for 90 days and shared with this ticket's agents.</p>
+      </div>
+      {state.conversations.length === 0 ? (
+        <p className="quiet-note">No saved Resolve conversations yet.</p>
+      ) : (
+        <div className="history-list">
+          {state.conversations.map((conversation) => (
+            <button
+              type="button"
+              onClick={() => onOpen(conversation.id)}
+              key={conversation.id}
+            >
+              <span>{new Date(conversation.updatedAt).toLocaleString()}</span>
+              <strong>Ticket #{conversation.ticketId}</strong>
+              <small>
+                Available until{" "}
+                {new Date(conversation.expiresAt).toLocaleDateString()}
+              </small>
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+export function App() {
+  const client = useZafClient();
+  const [ready, setReady] = useState<ReadyApp>();
+  const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    let active = true;
+    void Promise.all([client.metadata(), getTicketContext(client)])
+      .then(async ([metadata, context]) => {
+        const settings = parseVisibleSettings(metadata.settings);
+        const worker = new WorkerClient(client, settings);
+        const controller = new ChatController({
+          worker,
+          executeZendeskTool: (request) =>
+            executeZendeskTool(client, request, settings.zendeskSubdomain),
+        });
+        await controller.loadHistory(context.ticket.ticketId);
+        if (active) setReady({ context, worker, controller });
+      })
+      .catch(() => {
+        if (active) {
+          setError(
+            "Resolve could not load this ticket. Check the app settings and reload.",
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [client]);
+
+  if (error) {
+    return (
+      <main className="bootstrap-state">
+        <h1>Resolve</h1>
+        <div className="error-notice" role="alert">
+          {error}
+        </div>
+      </main>
+    );
+  }
+
+  if (!ready) {
+    return (
+      <main className="bootstrap-state" aria-busy="true">
+        <span className="brand-mark" aria-hidden="true">
+          R
+        </span>
+        <h1>Resolve</h1>
+        <p>Reading ticket context…</p>
+      </main>
+    );
+  }
+
+  return <Workspace ready={ready} />;
+}

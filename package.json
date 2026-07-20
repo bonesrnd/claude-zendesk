@@ -1,0 +1,35 @@
+{
+  "name": "resolve",
+  "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "skills:validate": "tsx scripts/validate-skills.mts",
+    "skills:new": "tsx scripts/create-skill.mts",
+    "worker:types:check": "pnpm --filter @resolve/orchestrator exec wrangler types --check",
+    "worker:dry-run": "pnpm --filter @resolve/orchestrator exec wrangler deploy --dry-run",
+    "zaf:validate": "zcli apps:validate apps/zendesk/dist",
+    "zaf:package": "zcli apps:package apps/zendesk/dist"
+  },
+  "packageManager": "pnpm@11.14.0+sha512.66c1ac4c7d4762d6d7dde44c7f3e5a73591ed0a0806e751d4ed32d4f004f25b2285a906b1fd8a9e3e621df3b4e2858bf88e50e0cf626bedbe977fe434a5caf85",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.1.1",
+    "@zendesk/zcli": "^1.1.2",
+    "eslint": "^10.7.0",
+    "eslint-plugin-promise": "^7.3.0",
+    "prettier": "^3.9.5",
+    "tslib": "^2.8.1",
+    "tsx": "^4.23.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.64.0",
+    "vitest": "^4.1.10"
+  }
+}

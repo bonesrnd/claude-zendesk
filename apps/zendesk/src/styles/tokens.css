@@ -1,0 +1,20 @@
+:root {
+  color-scheme: light;
+  --resolve-paper: #f2f0e9;
+  --resolve-paper-deep: #e7e2d6;
+  --resolve-surface: #fffdf8;
+  --resolve-ink: #1d2622;
+  --resolve-muted: #6f756f;
+  --resolve-line: #d8d3c7;
+  --resolve-green: #2f765d;
+  --resolve-green-soft: #dde9e1;
+  --resolve-orange: #d87945;
+  --resolve-orange-soft: #f3e2d7;
+  --resolve-error: #a34632;
+  --resolve-radius-sm: 8px;
+  --resolve-radius-md: 14px;
+  --resolve-radius-lg: 20px;
+  --resolve-shadow: 0 8px 24px rgb(29 38 34 / 10%);
+  --resolve-font-body: "Manrope Variable", sans-serif;
+  --resolve-font-display: "Newsreader Variable", serif;
+}

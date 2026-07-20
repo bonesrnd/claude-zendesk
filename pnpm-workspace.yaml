@@ -1,0 +1,11 @@
+packages:
+  - apps/*
+  - packages/*
+  - workers/*
+
+allowBuilds:
+  esbuild: true
+  keytar: true
+  sharp: true
+  workerd: true
+  yarn: false

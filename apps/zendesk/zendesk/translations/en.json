@@ -1,0 +1,49 @@
+{
+  "app": {
+    "name": "Resolve",
+    "short_description": "Ticket-aware customer service research with Claude.",
+    "long_description": "Resolve helps agents retrieve cited customer, order, shipment, tracking, and historical ticket information without leaving Zendesk.",
+    "installation_instructions": "Deploy the Resolve Worker, then enter its HTTPS URL, hostname, tenant settings, and secure integration credentials.",
+    "parameters": {
+      "worker_url": {
+        "label": "Resolve Worker URL"
+      },
+      "worker_host": {
+        "label": "Resolve Worker hostname"
+      },
+      "zendesk_subdomain": {
+        "label": "Zendesk subdomain"
+      },
+      "anthropic_model": {
+        "label": "Anthropic model"
+      },
+      "woo_base_url": {
+        "label": "WooCommerce store URL"
+      },
+      "shipstation_mode": {
+        "label": "ShipStation API mode (v2, v1, or auto)"
+      },
+      "backend_auth_token": {
+        "label": "Resolve backend authentication token"
+      },
+      "anthropic_api_key": {
+        "label": "Anthropic API key"
+      },
+      "woo_consumer_key": {
+        "label": "WooCommerce consumer key"
+      },
+      "woo_consumer_secret": {
+        "label": "WooCommerce consumer secret"
+      },
+      "shipstation_v2_key": {
+        "label": "ShipStation v2 API key"
+      },
+      "shipstation_v1_key": {
+        "label": "ShipStation v1 API key"
+      },
+      "shipstation_v1_secret": {
+        "label": "ShipStation v1 API secret"
+      }
+    }
+  }
+}

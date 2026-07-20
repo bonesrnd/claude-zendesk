@@ -1,0 +1,62 @@
+{
+  "id": 10982,
+  "number": "10982",
+  "status": "processing",
+  "date_created_gmt": "2026-07-17T15:30:00",
+  "currency": "USD",
+  "total": "64.00",
+  "customer_id": 77,
+  "line_items": [
+    {
+      "name": "Canvas Tote",
+      "quantity": 2,
+      "sku": "TOTE-NAT"
+    }
+  ],
+  "shipping_lines": [
+    {
+      "method_title": "UPS Ground"
+    }
+  ],
+  "billing": {
+    "first_name": "Maya",
+    "last_name": "Chen",
+    "company": "",
+    "city": "Boston",
+    "state": "MA",
+    "postcode": "02110",
+    "country": "US",
+    "email": "maya@example.com",
+    "phone": "+1-555-0100"
+  },
+  "shipping": {
+    "first_name": "Maya",
+    "last_name": "Chen",
+    "company": "",
+    "city": "Boston",
+    "state": "MA",
+    "postcode": "02110",
+    "country": "US"
+  },
+  "refunds": [
+    {
+      "id": 501,
+      "reason": "Damaged item",
+      "total": "-12.00"
+    }
+  ],
+  "meta_data": [
+    {
+      "id": 1,
+      "key": "gift",
+      "value": true
+    },
+    {
+      "id": 2,
+      "key": "warehouse",
+      "value": {
+        "zone": "east"
+      }
+    }
+  ]
+}

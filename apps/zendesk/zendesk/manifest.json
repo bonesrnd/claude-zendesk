@@ -1,0 +1,101 @@
+{
+  "name": "Resolve",
+  "author": {
+    "name": "Bones R&D",
+    "email": "bonesrnd@users.noreply.github.com"
+  },
+  "defaultLocale": "en",
+  "private": true,
+  "version": "1.0.0",
+  "frameworkVersion": "2.0",
+  "location": {
+    "support": {
+      "ticket_sidebar": {
+        "url": "assets/index.html",
+        "flexible": true
+      }
+    }
+  },
+  "domainWhitelist": ["{{setting.worker_host}}"],
+  "parameters": [
+    {
+      "name": "worker_url",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "worker_host",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "zendesk_subdomain",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "anthropic_model",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "woo_base_url",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "shipstation_mode",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "backend_auth_token",
+      "type": "text",
+      "required": true,
+      "secure": true,
+      "scopes": ["header"]
+    },
+    {
+      "name": "anthropic_api_key",
+      "type": "text",
+      "required": true,
+      "secure": true,
+      "scopes": ["header"]
+    },
+    {
+      "name": "woo_consumer_key",
+      "type": "text",
+      "required": true,
+      "secure": true,
+      "scopes": ["header"]
+    },
+    {
+      "name": "woo_consumer_secret",
+      "type": "text",
+      "required": true,
+      "secure": true,
+      "scopes": ["header"]
+    },
+    {
+      "name": "shipstation_v2_key",
+      "type": "text",
+      "required": false,
+      "secure": true,
+      "scopes": ["header"]
+    },
+    {
+      "name": "shipstation_v1_key",
+      "type": "text",
+      "required": false,
+      "secure": true,
+      "scopes": ["header"]
+    },
+    {
+      "name": "shipstation_v1_secret",
+      "type": "text",
+      "required": false,
+      "secure": true,
+      "scopes": ["header"]
+    }
+  ]
+}

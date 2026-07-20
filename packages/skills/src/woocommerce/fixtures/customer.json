@@ -1,0 +1,9 @@
+{
+  "id": 77,
+  "email": "maya@example.com",
+  "first_name": "Maya",
+  "last_name": "Chen",
+  "billing": {
+    "phone": "+1-555-0100"
+  }
+}

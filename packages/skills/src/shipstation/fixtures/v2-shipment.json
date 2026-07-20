@@ -1,0 +1,27 @@
+{
+  "shipment_id": "se-28529731",
+  "shipment_number": "10982",
+  "external_order_id": "10982",
+  "shipment_status": "label_purchased",
+  "created_at": "2026-07-17T15:30:00.000Z",
+  "ship_date": "2026-07-18T00:00:00.000Z",
+  "carrier_id": "se-123456",
+  "service_code": "ups_ground",
+  "tracking_number": "1Z999AA10123456784",
+  "ship_to": {
+    "name": "Maya Chen",
+    "email": "maya@example.com",
+    "phone": "+1-555-0100"
+  },
+  "packages": [
+    {
+      "products": [
+        {
+          "name": "Canvas Tote",
+          "quantity": 2,
+          "sku": "TOTE-NAT"
+        }
+      ]
+    }
+  ]
+}
