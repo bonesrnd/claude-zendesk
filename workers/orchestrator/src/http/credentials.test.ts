@@ -3,10 +3,18 @@ import { describe, expect, it } from "vitest";
 import { readCredentials, resolveWooStoreForBrand } from "./credentials";
 
 describe("readCredentials", () => {
+  it("uses the approved model and effort defaults", () => {
+    expect(readCredentials(new Headers())).toMatchObject({
+      anthropicModel: "claude-sonnet-5",
+      anthropicEffort: "medium",
+    });
+  });
+
   it("reads integration settings only from headers", () => {
     const headers = new Headers({
       "x-resolve-anthropic-key": "anthropic-secret",
       "x-resolve-anthropic-model": "claude-test",
+      "x-resolve-anthropic-effort": "medium",
       "x-resolve-woo-atomik-labz-key": "woo-key",
       "x-resolve-woo-atomik-labz-secret": "woo-secret",
       "x-resolve-shipstation-mode": "v2",
@@ -22,6 +30,7 @@ describe("readCredentials", () => {
     ).toEqual({
       anthropicApiKey: "anthropic-secret",
       anthropicModel: "claude-test",
+      anthropicEffort: "medium",
       wooBaseUrl: "https://atomiklabz.com",
       wooConsumerKey: "woo-key",
       wooConsumerSecret: "woo-secret",

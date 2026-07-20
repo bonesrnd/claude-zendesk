@@ -1,7 +1,15 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { fromAnthropicMessage, toAnthropicMessages } from "./anthropic-client";
+import {
+  AnthropicModelClient,
+  fromAnthropicMessage,
+  toAnthropicMessages,
+} from "./anthropic-client";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("Anthropic message conversion", () => {
   it("preserves tool result identifiers", () => {
@@ -82,6 +90,48 @@ describe("Anthropic message conversion", () => {
 
     expect(fromAnthropicMessage(message)).toMatchObject({
       stopReason: "max_tokens",
+    });
+  });
+});
+
+describe("AnthropicModelClient", () => {
+  it("sends the admin-selected model and effort", async () => {
+    let sentBody: Record<string, unknown> | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
+        sentBody =
+          input instanceof Request
+            ? await input.clone().json()
+            : (JSON.parse(String(init?.body)) as Record<string, unknown>);
+        return Response.json({
+          id: "msg_3",
+          type: "message",
+          role: "assistant",
+          model: "claude-sonnet-5",
+          content: [{ type: "text", text: "Done" }],
+          stop_reason: "end_turn",
+          stop_sequence: null,
+          usage: { input_tokens: 10, output_tokens: 5 },
+        });
+      }),
+    );
+    const client = new AnthropicModelClient(
+      "anthropic-key",
+      "claude-sonnet-5",
+      "medium",
+    );
+
+    await client.createMessage({
+      system: "You are Słones.",
+      messages: [{ role: "user", content: "Hello" }],
+      tools: [],
+      signal: new AbortController().signal,
+    });
+
+    expect(sentBody).toMatchObject({
+      model: "claude-sonnet-5",
+      output_config: { effort: "medium" },
     });
   });
 });

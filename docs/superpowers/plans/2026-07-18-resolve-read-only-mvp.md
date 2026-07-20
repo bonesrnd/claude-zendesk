@@ -35,6 +35,10 @@
 
 The original single WooCommerce setting examples below are superseded by two isolated connections. Ticket context must include `ticket.brand`; Solution Peptides maps to `solutionpeptides.net` and Atomik Labz maps to `atomiklabz.com`. Each store has its own visible origin plus secure consumer key/secret. Worker deployment pins both origins with `WOO_SOLUTION_PEPTIDES_BASE_URL` and `WOO_ATOMIK_LABZ_BASE_URL`. Unknown brands fail closed.
 
+### Approved assistant-settings amendment
+
+Resolve remains the private app name; the assistant identity is Słones. The UI uses JetBrains Mono throughout. Zendesk administrators control `anthropic_model` and `anthropic_effort` installation settings, defaulting to `claude-sonnet-5` and `medium`. The Worker validates model identifiers and effort values before calling Anthropic, then sends effort through `output_config.effort`.
+
 ## File map
 
 ### Workspace

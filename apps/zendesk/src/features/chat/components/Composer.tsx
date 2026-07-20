@@ -25,7 +25,7 @@ export function Composer({ disabled, onSend }: ComposerProps) {
   return (
     <div className="composer-shell">
       <label className="sr-only" htmlFor="resolve-composer">
-        Ask Resolve about this ticket
+        Ask Słones about this ticket
       </label>
       <textarea
         id="resolve-composer"
@@ -48,7 +48,7 @@ export function Composer({ disabled, onSend }: ComposerProps) {
       </button>
       {disabled && (
         <span className="working-status" role="status">
-          Resolve is working…
+          Słones is working…
         </span>
       )}
     </div>

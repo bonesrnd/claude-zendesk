@@ -24,6 +24,7 @@ export const WOO_STORE_HEADERS = {
 export interface RequestCredentials {
   anthropicApiKey: string | undefined;
   anthropicModel: string;
+  anthropicEffort: string;
   wooBaseUrl: string | undefined;
   wooConsumerKey: string | undefined;
   wooConsumerSecret: string | undefined;
@@ -80,8 +81,8 @@ export function readCredentials(
   return {
     anthropicApiKey: value(headers, "x-resolve-anthropic-key"),
     anthropicModel:
-      value(headers, "x-resolve-anthropic-model") ??
-      "claude-sonnet-4-5-20250929",
+      value(headers, "x-resolve-anthropic-model") ?? "claude-sonnet-5",
+    anthropicEffort: value(headers, "x-resolve-anthropic-effort") ?? "medium",
     wooBaseUrl: woo?.baseUrl,
     wooConsumerKey: woo ? value(headers, woo.keyHeader) : undefined,
     wooConsumerSecret: woo ? value(headers, woo.secretHeader) : undefined,

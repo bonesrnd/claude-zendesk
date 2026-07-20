@@ -36,7 +36,14 @@
     {
       "name": "anthropic_model",
       "type": "text",
-      "required": true
+      "required": true,
+      "default": "claude-sonnet-5"
+    },
+    {
+      "name": "anthropic_effort",
+      "type": "text",
+      "required": true,
+      "default": "medium"
     },
     {
       "name": "woo_solution_peptides_base_url",

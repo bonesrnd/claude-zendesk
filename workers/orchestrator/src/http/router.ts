@@ -155,7 +155,7 @@ export async function route(request: Request, env: Env): Promise<Response> {
     return errorResponse(
       502,
       "integration_error",
-      "Resolve could not complete the request.",
+      "Słones could not complete the request.",
       true,
     );
   }

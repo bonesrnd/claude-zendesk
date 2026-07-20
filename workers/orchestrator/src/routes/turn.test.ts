@@ -32,6 +32,7 @@ function workerRequest(path: string, body: unknown, headers?: HeadersInit) {
         "x-resolve-tenant": env.TENANT_KEY,
         "x-resolve-anthropic-key": "anthropic-test",
         "x-resolve-anthropic-model": "claude-test",
+        "x-resolve-anthropic-effort": "medium",
         "x-resolve-woo-solution-peptides-url": "https://solutionpeptides.net",
         "x-resolve-woo-solution-peptides-key": "woo-sp-key",
         "x-resolve-woo-solution-peptides-secret": "woo-sp-secret",
@@ -127,6 +128,28 @@ describe("POST /v1/turn", () => {
       kind: "error",
       code: "validation_error",
     });
+  });
+
+  it("rejects unsupported Anthropic effort values before calling the API", async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await workerRequest(
+      "/v1/turn",
+      {
+        message: "Check the latest order",
+        ticket,
+        agent: { id: 9, name: "Agent" },
+      },
+      { "x-resolve-anthropic-effort": "turbo" },
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      kind: "error",
+      code: "configuration_error",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("rejects tickets from an unmapped brand before using WooCommerce", async () => {

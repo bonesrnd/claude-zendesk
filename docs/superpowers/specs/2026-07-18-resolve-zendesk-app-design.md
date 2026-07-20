@@ -12,8 +12,11 @@ The first release is a working, read-only MVP. It proves the complete security a
 ## Product decisions
 
 - Product name: Resolve.
+- Assistant name: Słones. Resolve remains the Zendesk app and administrative package name.
 - Interface: Quiet Console visual language in a wide Zendesk ticket side panel.
+- Typography: JetBrains Mono throughout the assistant interface.
 - LLM: Anthropic Claude behind a provider interface.
+- Model policy: Zendesk administrators select a validated Claude model and effort level in installation settings; defaults are `claude-sonnet-5` and `medium`.
 - Backend: Cloudflare Workers.
 - Persistence: Cloudflare D1, shared by authorized agents viewing the same ticket.
 - Retention: 90 days, enforced by a scheduled cleanup job.
@@ -209,7 +212,7 @@ Any authorized agent using the installed app on the same ticket can load its con
 
 ### Visual direction
 
-Quiet Console uses warm paper neutrals, dark ink, restrained green success states, and orange action accents. It is calm and operational rather than visually resembling a generic AI dashboard.
+Quiet Console uses warm paper neutrals, dark ink, restrained green success states, orange action accents, and JetBrains Mono throughout. It is calm and operational rather than visually resembling a generic AI dashboard.
 
 ### Layout
 
@@ -345,7 +348,8 @@ Visible settings:
 
 - Worker HTTPS URL.
 - Zendesk account/subdomain identifier.
-- Claude model selection or policy.
+- Słones Claude model identifier.
+- Słones effort: `low`, `medium`, `high`, `xhigh`, or `max`.
 - Solution Peptides WooCommerce HTTPS origin.
 - Atomik Labz WooCommerce HTTPS origin.
 - ShipStation mode: v2, v1, or automatic preference.

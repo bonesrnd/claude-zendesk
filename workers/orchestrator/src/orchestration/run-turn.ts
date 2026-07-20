@@ -256,7 +256,7 @@ async function executeTool(
           skillId: registered.skill.id,
           toolName: call.name,
           status: "failed",
-          summary: "Resolve rejected invalid tool input.",
+          summary: "Słones rejected invalid tool input.",
         },
       };
     }
@@ -372,10 +372,10 @@ async function runLoop(
       return {
         kind: "error",
         code: "orchestration_limit",
-        message: "Resolve reached the time limit for this message.",
+        message: "Słones reached the time limit for this message.",
         retryable: true,
         partial: partialResult(
-          "Resolve completed partial research before reaching the time limit.",
+          "Słones completed partial research before reaching the time limit.",
           citations,
           toolEvents,
         ),
@@ -398,10 +398,10 @@ async function runLoop(
       return {
         kind: "error",
         code: "orchestration_limit",
-        message: "Resolve reached the time limit for this message.",
+        message: "Słones reached the time limit for this message.",
         retryable: true,
         partial: partialResult(
-          "Resolve completed partial research before reaching the time limit.",
+          "Słones completed partial research before reaching the time limit.",
           citations,
           toolEvents,
         ),
@@ -457,10 +457,10 @@ async function runLoop(
       return {
         kind: "error",
         code: "orchestration_limit",
-        message: "Resolve requested too many tools for one response.",
+        message: "Słones requested too many tools for one response.",
         retryable: true,
         partial: partialResult(
-          "Resolve stopped before running an oversized tool request.",
+          "Słones stopped before running an oversized tool request.",
           citations,
           toolEvents,
         ),
@@ -519,10 +519,10 @@ async function runLoop(
   return {
     kind: "error",
     code: "orchestration_limit",
-    message: "Resolve reached the tool-call limit for this message.",
+    message: "Słones reached the tool-call limit for this message.",
     retryable: true,
     partial: partialResult(
-      "Resolve completed partial research before reaching the tool-call limit.",
+      "Słones completed partial research before reaching the tool-call limit.",
       citations,
       toolEvents,
     ),

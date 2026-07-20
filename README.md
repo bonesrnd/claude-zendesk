@@ -1,6 +1,6 @@
 # Resolve
 
-Resolve is a private Zendesk Support app that gives agents a ticket-aware Claude chat. It retrieves cited customer, order, shipment, tracking, and prior-ticket information from Zendesk, WooCommerce, and ShipStation without leaving the active ticket.
+Resolve is a private Zendesk Support app whose assistant, Słones, gives agents a ticket-aware Claude chat. It retrieves cited customer, order, shipment, tracking, and prior-ticket information from Zendesk, WooCommerce, and ShipStation without leaving the active ticket.
 
 The current milestone is intentionally read-only. Profile creation, profile merges, shipment tags, shipping-method changes, and every other mutation remain disabled until a later confirmed-write milestone.
 
@@ -15,6 +15,8 @@ The current milestone is intentionally read-only. Profile creation, profile merg
 Zendesk secure installation settings are inserted into allow-listed Worker request headers by Zendesk's proxy. The browser cannot read the secret values, and the Worker does not persist them.
 
 For this installation, Resolve maps the active ticket brand to one of two isolated WooCommerce connections: Solution Peptides (`solutionpeptides.net`) or Atomik Labz (`atomiklabz.com`). Unknown brands are rejected instead of searched across stores.
+
+Zendesk administrators select Słones's Claude model and effort level in Resolve's installation settings. The in-app Settings view shows the active values. The interface uses JetBrains Mono throughout.
 
 ## Requirements
 

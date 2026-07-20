@@ -40,7 +40,7 @@ export default {
         errorResponse(
           429,
           "rate_limited",
-          "Resolve is receiving too many requests. Try again shortly.",
+          "Słones is receiving too many requests. Try again shortly.",
           true,
         ),
       );

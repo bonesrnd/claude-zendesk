@@ -66,7 +66,8 @@ Visible settings:
 - Worker URL: the deployed `https://...workers.dev` URL.
 - Worker hostname: the same host without `https://`.
 - Zendesk subdomain: the account subdomain and Cloudflare `TENANT_KEY`.
-- Anthropic model: a supported Claude model identifier.
+- Słones Claude model: a supported identifier such as `claude-sonnet-5`.
+- Słones effort: `low`, `medium`, `high`, `xhigh`, or `max`; `medium` is the default.
 - Solution Peptides WooCommerce URL: `https://solutionpeptides.net`.
 - Atomik Labz WooCommerce URL: `https://atomiklabz.com`.
 - ShipStation mode: `v2`, `v1`, or `auto`.

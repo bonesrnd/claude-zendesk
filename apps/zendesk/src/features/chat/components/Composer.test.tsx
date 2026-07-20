@@ -10,7 +10,7 @@ describe("Composer", () => {
     const onSend = vi.fn();
     render(<Composer disabled={false} onSend={onSend} />);
     const textbox = screen.getByRole("textbox", {
-      name: "Ask Resolve about this ticket",
+      name: "Ask Słones about this ticket",
     });
 
     await user.type(textbox, "First line{shift>}{enter}{/shift}Second line");
@@ -24,7 +24,7 @@ describe("Composer", () => {
   it("announces the working state", () => {
     render(<Composer disabled onSend={vi.fn()} />);
 
-    expect(screen.getByText("Resolve is working…")).toBeInTheDocument();
+    expect(screen.getByText("Słones is working…")).toBeInTheDocument();
     expect(screen.getByRole("textbox")).toBeDisabled();
   });
 });

@@ -1,8 +1,11 @@
 import {
+  AnthropicEffortSchema,
+  AnthropicModelSchema,
   ContinueTurnRequestSchema,
   TurnRequestSchema,
   TurnResponseSchema,
   type ContinueTurnRequest,
+  type AnthropicEffort,
   type TicketBrand,
   type TurnRequest,
   type TurnResponse,
@@ -15,6 +18,7 @@ export interface VisibleSettings {
   workerUrl: string;
   zendeskSubdomain: string;
   anthropicModel: string;
+  anthropicEffort: AnthropicEffort;
   wooSolutionPeptidesBaseUrl: string;
   wooAtomikLabzBaseUrl: string;
   shipstationMode: string;
@@ -23,7 +27,8 @@ export interface VisibleSettings {
 const VisibleSettingsSchema = z.object({
   worker_url: z.url(),
   zendesk_subdomain: z.string().min(1),
-  anthropic_model: z.string().min(1),
+  anthropic_model: AnthropicModelSchema,
+  anthropic_effort: AnthropicEffortSchema,
   woo_solution_peptides_base_url: z.url(),
   woo_atomik_labz_base_url: z.url(),
   shipstation_mode: z.enum(["v2", "v1", "auto"]),
@@ -37,6 +42,7 @@ export function parseVisibleSettings(
     workerUrl: parsed.worker_url,
     zendeskSubdomain: parsed.zendesk_subdomain,
     anthropicModel: parsed.anthropic_model,
+    anthropicEffort: parsed.anthropic_effort,
     wooSolutionPeptidesBaseUrl: parsed.woo_solution_peptides_base_url,
     wooAtomikLabzBaseUrl: parsed.woo_atomik_labz_base_url,
     shipstationMode: parsed.shipstation_mode,
@@ -152,6 +158,7 @@ export class WorkerClient {
       ...SECURE_HEADERS,
       "x-resolve-tenant": this.settings.zendeskSubdomain,
       "x-resolve-anthropic-model": this.settings.anthropicModel,
+      "x-resolve-anthropic-effort": this.settings.anthropicEffort,
       "x-resolve-woo-solution-peptides-url":
         this.settings.wooSolutionPeptidesBaseUrl,
       "x-resolve-woo-atomik-labz-url": this.settings.wooAtomikLabzBaseUrl,

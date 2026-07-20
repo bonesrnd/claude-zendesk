@@ -18,6 +18,7 @@ describe("App", () => {
           worker_url: "https://resolve.example.workers.dev",
           zendesk_subdomain: "example",
           anthropic_model: "claude-test",
+          anthropic_effort: "medium",
           woo_solution_peptides_base_url: "https://solutionpeptides.net",
           woo_atomik_labz_base_url: "https://atomiklabz.com",
           shipstation_mode: "v2",
@@ -44,9 +45,7 @@ describe("App", () => {
       </ZafClientProvider>,
     );
 
-    expect(
-      screen.getByRole("heading", { name: "Resolve" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Słones" })).toBeInTheDocument();
     expect(await screen.findByText("Maya Chen")).toBeInTheDocument();
     expect(
       screen.getByText("Research this ticket without leaving Zendesk."),

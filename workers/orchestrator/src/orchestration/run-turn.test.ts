@@ -465,7 +465,7 @@ describe("runTurn", () => {
     expect(result).toMatchObject({
       kind: "error",
       code: "orchestration_limit",
-      message: "Resolve reached the tool-call limit for this message.",
+      message: "Słones reached the tool-call limit for this message.",
       retryable: true,
       partial: {
         citations: [{ providerId: "1" }],

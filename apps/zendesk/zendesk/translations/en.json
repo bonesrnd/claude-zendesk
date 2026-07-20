@@ -15,7 +15,12 @@
         "label": "Zendesk subdomain"
       },
       "anthropic_model": {
-        "label": "Anthropic model"
+        "label": "Słones Claude model",
+        "helpText": "Enter a supported Claude model identifier, such as `claude-sonnet-5`."
+      },
+      "anthropic_effort": {
+        "label": "Słones effort",
+        "helpText": "Allowed values: `low`, `medium`, `high`, `xhigh`, or `max`. Higher effort can increase latency and cost."
       },
       "woo_solution_peptides_base_url": {
         "label": "Solution Peptides WooCommerce URL"

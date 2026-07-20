@@ -1,6 +1,29 @@
 import { describe, expect, it } from "vitest";
 
-import { TurnRequestSchema, TurnResponseSchema } from "./api";
+import {
+  AnthropicEffortSchema,
+  AnthropicModelSchema,
+  TurnRequestSchema,
+  TurnResponseSchema,
+} from "./api";
+
+describe("Anthropic admin settings", () => {
+  it("accepts supported effort levels", () => {
+    for (const effort of ["low", "medium", "high", "xhigh", "max"]) {
+      expect(AnthropicEffortSchema.parse(effort)).toBe(effort);
+    }
+    expect(AnthropicEffortSchema.safeParse("turbo").success).toBe(false);
+  });
+
+  it("accepts Claude model identifiers and rejects arbitrary values", () => {
+    expect(AnthropicModelSchema.parse("claude-sonnet-5")).toBe(
+      "claude-sonnet-5",
+    );
+    expect(AnthropicModelSchema.safeParse("https://evil.example").success).toBe(
+      false,
+    );
+  });
+});
 
 describe("TurnRequestSchema", () => {
   it("rejects unknown keys", () => {

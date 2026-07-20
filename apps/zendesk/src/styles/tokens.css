@@ -15,6 +15,6 @@
   --resolve-radius-md: 14px;
   --resolve-radius-lg: 20px;
   --resolve-shadow: 0 8px 24px rgb(29 38 34 / 10%);
-  --resolve-font-body: "Manrope Variable", sans-serif;
-  --resolve-font-display: "Newsreader Variable", serif;
+  --resolve-font-body: "JetBrains Mono Variable", monospace;
+  --resolve-font-display: "JetBrains Mono Variable", monospace;
 }

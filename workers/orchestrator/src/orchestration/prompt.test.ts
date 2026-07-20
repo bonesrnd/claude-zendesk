@@ -21,6 +21,9 @@ describe("buildSystemPrompt", () => {
     );
 
     expect(prompt.length).toBeLessThan(70_000);
+    expect(prompt).toContain(
+      "You are Słones, a read-only customer-service research assistant.",
+    );
     expect(prompt).toContain('"body":"29:');
     expect(prompt).not.toContain('"body":"0:');
   });

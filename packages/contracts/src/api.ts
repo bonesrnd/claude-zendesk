@@ -2,6 +2,21 @@ import { z } from "zod";
 
 import { CitationSchema, TicketContextSchema, ToolEventSchema } from "./domain";
 
+export const AnthropicModelSchema = z
+  .string()
+  .trim()
+  .regex(/^claude-[a-z0-9][a-z0-9-]{1,99}$/);
+
+export const AnthropicEffortSchema = z.enum([
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+]);
+
+export type AnthropicEffort = z.infer<typeof AnthropicEffortSchema>;
+
 export const AgentIdentitySchema = z.strictObject({
   id: z.number().int().positive(),
   name: z.string().min(1).max(200),

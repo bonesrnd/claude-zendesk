@@ -168,7 +168,7 @@ export class ChatController {
         if (delegatedCount >= 6) {
           this.fail(
             "orchestration_limit",
-            "Resolve reached the delegated tool limit.",
+            "Słones reached the delegated tool limit.",
             true,
           );
           return;
@@ -197,7 +197,7 @@ export class ChatController {
     } catch {
       this.fail(
         "request_failed",
-        "Resolve could not complete this request.",
+        "Słones could not complete this request.",
         true,
       );
     }
@@ -228,7 +228,7 @@ export class ChatController {
     if (response.kind === "delegated_tool_request") {
       this.fail(
         "orchestration_limit",
-        "Resolve reached the delegated tool limit.",
+        "Słones reached the delegated tool limit.",
         true,
       );
       return;

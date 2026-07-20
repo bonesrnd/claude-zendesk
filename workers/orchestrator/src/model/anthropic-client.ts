@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import type { AnthropicEffort } from "@resolve/contracts";
 
 import type {
   ModelBlock,
@@ -78,6 +79,7 @@ export class AnthropicModelClient implements ModelClient {
   constructor(
     private readonly apiKey: string,
     private readonly model: string,
+    private readonly effort: AnthropicEffort,
   ) {}
 
   async createMessage(
@@ -89,6 +91,7 @@ export class AnthropicModelClient implements ModelClient {
         model: this.model,
         max_tokens: 2_048,
         system: input.system,
+        output_config: { effort: this.effort },
         messages: toAnthropicMessages(input.messages),
         tools: input.tools.map((tool) => ({
           name: tool.name,

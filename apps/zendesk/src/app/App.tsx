@@ -1,6 +1,10 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 
-import { parseVisibleSettings, WorkerClient } from "../api/worker-client";
+import {
+  parseVisibleSettings,
+  WorkerClient,
+  type VisibleSettings,
+} from "../api/worker-client";
 import {
   ChatController,
   type ChatState,
@@ -8,6 +12,7 @@ import {
 import { Composer } from "../features/chat/components/Composer";
 import { Conversation } from "../features/chat/components/Conversation";
 import { ErrorNotice } from "../features/chat/components/ErrorNotice";
+import { AssistantSettings } from "../features/settings/AssistantSettings";
 import { SkillsManager } from "../features/skills/SkillsManager";
 import {
   getTicketContext,
@@ -16,12 +21,13 @@ import {
 import { executeZendeskTool } from "../features/zendesk-tools/executor";
 import { useZafClient } from "./ZafClientProvider";
 
-type View = "chat" | "history" | "skills";
+type View = "chat" | "history" | "skills" | "settings";
 
 interface ReadyApp {
   context: ActiveTicketContext;
   worker: WorkerClient;
   controller: ChatController;
+  settings: VisibleSettings;
 }
 
 function initials(name: string): string {
@@ -52,11 +58,11 @@ function Workspace({ ready }: { ready: ReadyApp }) {
       <header className="app-header">
         <div className="brand">
           <span className="brand-mark" aria-hidden="true">
-            R
+            S
           </span>
-          <h1>Resolve</h1>
+          <h1>Słones</h1>
         </div>
-        <nav aria-label="Resolve views">
+        <nav aria-label="Słones views">
           <button
             type="button"
             className={view === "history" ? "is-active" : ""}
@@ -70,6 +76,13 @@ function Workspace({ ready }: { ready: ReadyApp }) {
             onClick={() => setView("skills")}
           >
             Skills
+          </button>
+          <button
+            type="button"
+            className={view === "settings" ? "is-active" : ""}
+            onClick={() => setView("settings")}
+          >
+            Settings
           </button>
           <button
             type="button"
@@ -122,6 +135,13 @@ function Workspace({ ready }: { ready: ReadyApp }) {
           brand={ready.context.ticket.brand}
         />
       )}
+
+      {view === "settings" && (
+        <AssistantSettings
+          model={ready.settings.anthropicModel}
+          effort={ready.settings.anthropicEffort}
+        />
+      )}
     </main>
   );
 }
@@ -141,7 +161,7 @@ function HistoryView({
         <p>Retained for 90 days and shared with this ticket's agents.</p>
       </div>
       {state.conversations.length === 0 ? (
-        <p className="quiet-note">No saved Resolve conversations yet.</p>
+        <p className="quiet-note">No saved Słones conversations yet.</p>
       ) : (
         <div className="history-list">
           {state.conversations.map((conversation) => (
@@ -181,7 +201,7 @@ export function App() {
             executeZendeskTool(client, request, settings.zendeskSubdomain),
         });
         await controller.loadHistory(context.ticket.ticketId);
-        if (active) setReady({ context, worker, controller });
+        if (active) setReady({ context, worker, controller, settings });
       })
       .catch(() => {
         if (active) {
@@ -198,7 +218,7 @@ export function App() {
   if (error) {
     return (
       <main className="bootstrap-state">
-        <h1>Resolve</h1>
+        <h1>Słones</h1>
         <div className="error-notice" role="alert">
           {error}
         </div>
@@ -210,9 +230,9 @@ export function App() {
     return (
       <main className="bootstrap-state" aria-busy="true">
         <span className="brand-mark" aria-hidden="true">
-          R
+          S
         </span>
-        <h1>Resolve</h1>
+        <h1>Słones</h1>
         <p>Reading ticket context…</p>
       </main>
     );

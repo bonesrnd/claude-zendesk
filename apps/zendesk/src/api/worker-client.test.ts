@@ -7,6 +7,7 @@ const settings: VisibleSettings = {
   workerUrl: "https://resolve.example.workers.dev",
   zendeskSubdomain: "example",
   anthropicModel: "claude-test",
+  anthropicEffort: "medium",
   wooSolutionPeptidesBaseUrl: "https://solutionpeptides.net",
   wooAtomikLabzBaseUrl: "https://atomiklabz.com",
   shipstationMode: "v2",
@@ -48,6 +49,7 @@ describe("WorkerClient", () => {
       headers: {
         authorization: "Bearer {{setting.backend_auth_token}}",
         "x-resolve-anthropic-key": "{{setting.anthropic_api_key}}",
+        "x-resolve-anthropic-effort": "medium",
         "x-resolve-woo-solution-peptides-key":
           "{{setting.woo_solution_peptides_consumer_key}}",
         "x-resolve-woo-solution-peptides-secret":

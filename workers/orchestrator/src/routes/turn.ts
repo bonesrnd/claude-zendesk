@@ -1,5 +1,7 @@
 import {
   AssistantMessageResponseSchema,
+  AnthropicEffortSchema,
+  AnthropicModelSchema,
   ContinueTurnRequestSchema,
   DelegatedToolResponseSchema,
   TurnRequestSchema,
@@ -28,6 +30,14 @@ import { PendingTurnRepository } from "../repositories/pending-turns";
 
 function tenant(request: Request): string {
   return request.headers.get("x-resolve-tenant")?.trim() ?? "";
+}
+
+function anthropicSettings(credentials: ReturnType<typeof readCredentials>) {
+  const model = AnthropicModelSchema.safeParse(credentials.anthropicModel);
+  const effort = AnthropicEffortSchema.safeParse(credentials.anthropicEffort);
+  return model.success && effort.success
+    ? { model: model.data, effort: effort.data }
+    : undefined;
 }
 
 function wooSource(
@@ -162,6 +172,16 @@ export async function handleTurn(
       "anthropic",
     );
   }
+  const selectedAnthropic = anthropicSettings(credentials);
+  if (!selectedAnthropic) {
+    return errorResponse(
+      400,
+      "configuration_error",
+      "Anthropic model or effort setting is invalid.",
+      false,
+      "anthropic",
+    );
+  }
 
   const conversations = new ConversationRepository(env.DB);
   let conversation;
@@ -196,7 +216,8 @@ export async function handleTurn(
   );
   const model = new AnthropicModelClient(
     credentials.anthropicApiKey,
-    credentials.anthropicModel,
+    selectedAnthropic.model,
+    selectedAnthropic.effort,
   );
   const result = await runTurn({
     model,
@@ -262,10 +283,21 @@ export async function handleContinueTurn(
       "anthropic",
     );
   }
+  const selectedAnthropic = anthropicSettings(credentials);
+  if (!selectedAnthropic) {
+    return errorResponse(
+      400,
+      "configuration_error",
+      "Anthropic model or effort setting is invalid.",
+      false,
+      "anthropic",
+    );
+  }
   const result = await resumeTurn({
     model: new AnthropicModelClient(
       credentials.anthropicApiKey,
-      credentials.anthropicModel,
+      selectedAnthropic.model,
+      selectedAnthropic.effort,
     ),
     registry: skillRegistry,
     conversationId: conversation.id,

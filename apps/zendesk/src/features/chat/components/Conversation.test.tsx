@@ -57,5 +57,8 @@ describe("Conversation", () => {
     expect(
       screen.getByText("Research this ticket without leaving Zendesk."),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Ask Słones about the customer/i),
+    ).toBeInTheDocument();
   });
 });

@@ -152,7 +152,7 @@ describe("ChatController", () => {
     expect(controller.getSnapshot()).toMatchObject({
       status: "error",
       error: {
-        message: "Resolve reached the delegated tool limit.",
+        message: "Słones reached the delegated tool limit.",
       },
     });
   });
