@@ -16,6 +16,7 @@ import type { ZafClient, ZafRequestOptions } from "../types/zaf";
 
 export interface VisibleSettings {
   workerUrl: string;
+  workerHost: string;
   zendeskSubdomain: string;
   anthropicModel: string;
   anthropicEffort: AnthropicEffort;
@@ -24,14 +25,51 @@ export interface VisibleSettings {
   shipstationMode: string;
 }
 
+const blankAsUndefined = (value: unknown) =>
+  typeof value === "string" && value.trim() === "" ? undefined : value;
+
+const HttpsUrlSchema = z
+  .url()
+  .refine(
+    (value) => new URL(value).protocol === "https:",
+    "URL must use HTTPS",
+  );
+
 const VisibleSettingsSchema = z.object({
-  worker_url: z.url(),
-  zendesk_subdomain: z.string().min(1),
-  anthropic_model: AnthropicModelSchema,
-  anthropic_effort: AnthropicEffortSchema,
-  woo_solution_peptides_base_url: z.url(),
-  woo_atomik_labz_base_url: z.url(),
-  shipstation_mode: z.enum(["v2", "v1", "auto"]),
+  worker_url: z.preprocess(
+    blankAsUndefined,
+    HttpsUrlSchema.default(
+      "https://resolve-orchestrator.bones-baa.workers.dev",
+    ),
+  ),
+  worker_host: z.preprocess(
+    blankAsUndefined,
+    z.string().min(1).default("resolve-orchestrator.bones-baa.workers.dev"),
+  ),
+  zendesk_subdomain: z.preprocess(
+    blankAsUndefined,
+    z.string().min(1).default("solutionpeptides"),
+  ),
+  anthropic_model: z.preprocess(
+    blankAsUndefined,
+    AnthropicModelSchema.default("claude-sonnet-5"),
+  ),
+  anthropic_effort: z.preprocess(
+    blankAsUndefined,
+    AnthropicEffortSchema.default("medium"),
+  ),
+  woo_solution_peptides_base_url: z.preprocess(
+    blankAsUndefined,
+    HttpsUrlSchema.default("https://solutionpeptides.net"),
+  ),
+  woo_atomik_labz_base_url: z.preprocess(
+    blankAsUndefined,
+    HttpsUrlSchema.default("https://atomiklabz.com"),
+  ),
+  shipstation_mode: z.preprocess(
+    blankAsUndefined,
+    z.enum(["v2", "v1", "auto"]).default("auto"),
+  ),
 });
 
 export function parseVisibleSettings(
@@ -40,6 +78,7 @@ export function parseVisibleSettings(
   const parsed = VisibleSettingsSchema.parse(settings);
   return {
     workerUrl: parsed.worker_url,
+    workerHost: parsed.worker_host,
     zendeskSubdomain: parsed.zendesk_subdomain,
     anthropicModel: parsed.anthropic_model,
     anthropicEffort: parsed.anthropic_effort,

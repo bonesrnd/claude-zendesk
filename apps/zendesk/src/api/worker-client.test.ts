@@ -1,10 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { ZafClient } from "../types/zaf";
-import { WorkerClient, type VisibleSettings } from "./worker-client";
+import {
+  parseVisibleSettings,
+  WorkerClient,
+  type VisibleSettings,
+} from "./worker-client";
 
 const settings: VisibleSettings = {
   workerUrl: "https://resolve.example.workers.dev",
+  workerHost: "resolve.example.workers.dev",
   zendeskSubdomain: "example",
   anthropicModel: "claude-test",
   anthropicEffort: "medium",
@@ -14,6 +19,19 @@ const settings: VisibleSettings = {
 };
 
 describe("WorkerClient", () => {
+  it("defaults all non-secret single-tenant settings", () => {
+    expect(parseVisibleSettings({})).toEqual({
+      workerUrl: "https://resolve-orchestrator.bones-baa.workers.dev",
+      workerHost: "resolve-orchestrator.bones-baa.workers.dev",
+      zendeskSubdomain: "solutionpeptides",
+      anthropicModel: "claude-sonnet-5",
+      anthropicEffort: "medium",
+      wooSolutionPeptidesBaseUrl: "https://solutionpeptides.net",
+      wooAtomikLabzBaseUrl: "https://atomiklabz.com",
+      shipstationMode: "auto",
+    });
+  });
+
   it("uses secure proxy placeholders without putting secrets in JSON", async () => {
     const request = vi.fn().mockResolvedValue({
       kind: "assistant_message",

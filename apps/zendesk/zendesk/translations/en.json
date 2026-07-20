@@ -32,31 +32,40 @@
         "label": "ShipStation API mode (v2, v1, or auto)"
       },
       "backend_auth_token": {
-        "label": "Resolve backend authentication token"
+        "label": "Resolve backend authentication token",
+        "helpText": "Zendesk hides secure values after saving. Existing values are preserved during private-app updates; enter a value only when installing or rotating the token."
       },
       "anthropic_api_key": {
-        "label": "Anthropic API key"
+        "label": "Anthropic API key",
+        "helpText": "Stored securely by Zendesk and hidden after saving. Leave blank during updates unless rotating the key."
       },
       "woo_solution_peptides_consumer_key": {
-        "label": "Solution Peptides WooCommerce consumer key"
+        "label": "Solution Peptides WooCommerce consumer key",
+        "helpText": "Stored securely by Zendesk and hidden after saving. Leave blank during updates unless rotating the key."
       },
       "woo_solution_peptides_consumer_secret": {
-        "label": "Solution Peptides WooCommerce consumer secret"
+        "label": "Solution Peptides WooCommerce consumer secret",
+        "helpText": "Stored securely by Zendesk and hidden after saving. Leave blank during updates unless rotating the secret."
       },
       "woo_atomik_labz_consumer_key": {
-        "label": "Atomik Labz WooCommerce consumer key"
+        "label": "Atomik Labz WooCommerce consumer key",
+        "helpText": "Stored securely by Zendesk and hidden after saving. Leave blank during updates unless rotating the key."
       },
       "woo_atomik_labz_consumer_secret": {
-        "label": "Atomik Labz WooCommerce consumer secret"
+        "label": "Atomik Labz WooCommerce consumer secret",
+        "helpText": "Stored securely by Zendesk and hidden after saving. Leave blank during updates unless rotating the secret."
       },
       "shipstation_v2_key": {
-        "label": "ShipStation v2 API key"
+        "label": "ShipStation v2 API key",
+        "helpText": "Stored securely by Zendesk and hidden after saving. Leave blank during updates unless rotating the key."
       },
       "shipstation_v1_key": {
-        "label": "ShipStation v1 API key"
+        "label": "ShipStation v1 API key",
+        "helpText": "Stored securely by Zendesk and hidden after saving. Leave blank during updates unless rotating the key."
       },
       "shipstation_v1_secret": {
-        "label": "ShipStation v1 API secret"
+        "label": "ShipStation v1 API secret",
+        "helpText": "Stored securely by Zendesk and hidden after saving. Leave blank during updates unless rotating the secret."
       }
     }
   }

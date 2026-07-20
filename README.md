@@ -18,6 +18,8 @@ For this installation, Resolve maps the active ticket brand to one of two isolat
 
 Zendesk administrators select Słones's Claude model and effort level in Resolve's installation settings. The in-app Settings view shows the active values. The interface uses JetBrains Mono throughout.
 
+Single-tenant visible settings are preconfigured. Zendesk deliberately hides secure values after saving them; private-app updates preserve those values, while the backend token remains a one-time manual secret.
+
 ## Requirements
 
 - Node.js 22 or newer

@@ -1,6 +1,5 @@
 import {
   AgentIdentitySchema,
-  TicketBrandSchema,
   TicketContextSchema,
   type AgentIdentity,
   type TicketContext,
@@ -12,7 +11,13 @@ import type { ZafClient } from "../../types/zaf";
 const RequesterSchema = z.object({
   id: z.number().int().positive(),
   name: z.string().min(1),
-  email: z.string().optional(),
+  email: z.string().nullable().optional(),
+});
+
+const BrandSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string().min(1),
+  subdomain: z.string().nullable().optional(),
 });
 
 const UserSchema = z.object({
@@ -28,7 +33,7 @@ const ConversationEntrySchema = z.object({
     .optional(),
   message: z
     .object({
-      content: z.string().optional(),
+      content: z.string().nullable().optional(),
     })
     .optional(),
   timestamp: z.string(),
@@ -52,7 +57,7 @@ export async function getTicketContext(
     "currentUser",
   ]);
   const requester = RequesterSchema.parse(result["ticket.requester"]);
-  const brand = TicketBrandSchema.parse(result["ticket.brand"]);
+  const brand = BrandSchema.parse(result["ticket.brand"]);
   const user = UserSchema.parse(result.currentUser);
   const conversation = z
     .array(ConversationEntrySchema)
@@ -68,13 +73,20 @@ export async function getTicketContext(
   return {
     ticket: TicketContextSchema.parse({
       ticketId: result["ticket.id"],
-      subject: result["ticket.subject"] ?? "",
+      subject:
+        typeof result["ticket.subject"] === "string"
+          ? result["ticket.subject"]
+          : "",
       requester: {
         id: requester.id,
         name: requester.name,
         ...(requester.email ? { email: requester.email } : {}),
       },
-      brand,
+      brand: {
+        id: brand.id,
+        name: brand.name,
+        ...(brand.subdomain ? { subdomain: brand.subdomain } : {}),
+      },
       recentConversation: conversation,
     }),
     agent: AgentIdentitySchema.parse(user),

@@ -71,6 +71,8 @@ Visible settings:
 - Atomik Labz WooCommerce URL: `https://atomiklabz.com`.
 - ShipStation mode: `v2`, `v1`, or `auto`.
 
+Resolve preconfigures the Worker URL, hostname, `solutionpeptides` subdomain, both WooCommerce origins, model, effort, and ShipStation `auto` mode for this single-tenant installation.
+
 Secure settings:
 
 - Backend auth token: the value stored in `BACKEND_AUTH_TOKEN`.
@@ -80,6 +82,8 @@ Secure settings:
 - ShipStation v2 key and/or legacy v1 key and secret.
 
 WooCommerce keys should be read-only for the MVP. Resolve does not need a Zendesk API token because delegated ticket reads use the current agent's ZAF session.
+
+Zendesk intentionally shows secure settings as blank after they are saved and does not expose their stored values to the app. Private-app updates preserve existing secure values. The backend token cannot be safely embedded or auto-filled because doing so would publish it in the ZIP; copy it from the git-ignored `workers/orchestrator/.dev.vars` only during installation or rotation.
 
 ## 7. Smoke test
 

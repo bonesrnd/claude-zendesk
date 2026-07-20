@@ -51,4 +51,53 @@ describe("App", () => {
       screen.getByText("Research this ticket without leaving Zendesk."),
     ).toBeInTheDocument();
   });
+
+  it("classifies an insecure Worker URL as invalid settings", async () => {
+    const client = {
+      on: vi.fn(),
+      invoke: vi.fn(),
+      metadata: vi.fn().mockResolvedValue({
+        settings: { worker_url: "http://insecure.example" },
+      }),
+      get: vi.fn().mockResolvedValue({
+        "ticket.id": 8421,
+        "ticket.subject": "Where is my order?",
+        "ticket.requester": { id: 77, name: "Maya Chen" },
+        "ticket.brand": { id: 123, name: "Solution Peptides" },
+        "ticket.conversation": [],
+        currentUser: { id: 9, name: "Agent" },
+      }),
+      request: vi.fn(),
+    };
+    vi.stubGlobal("ZAFClient", { init: () => client });
+    render(
+      <ZafClientProvider>
+        <App />
+      </ZafClientProvider>,
+    );
+
+    expect(
+      await screen.findByText("Resolve settings are incomplete or invalid."),
+    ).toBeInTheDocument();
+  });
+
+  it("reports Zendesk ticket context failures separately", async () => {
+    const client = {
+      on: vi.fn(),
+      invoke: vi.fn(),
+      metadata: vi.fn().mockResolvedValue({ settings: {} }),
+      get: vi.fn().mockRejectedValue(new Error("ZAF unavailable")),
+      request: vi.fn(),
+    };
+    vi.stubGlobal("ZAFClient", { init: () => client });
+    render(
+      <ZafClientProvider>
+        <App />
+      </ZafClientProvider>,
+    );
+
+    expect(
+      await screen.findByText("Zendesk ticket context is unavailable."),
+    ).toBeInTheDocument();
+  });
 });

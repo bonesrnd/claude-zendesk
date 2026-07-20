@@ -52,4 +52,44 @@ describe("getTicketContext", () => {
 
     await expect(getTicketContext(client)).rejects.toThrow();
   });
+
+  it("accepts valid Zendesk events with null message content", async () => {
+    const client = {
+      get: vi.fn().mockResolvedValue({
+        "ticket.id": 8421,
+        "ticket.subject": null,
+        "ticket.requester": {
+          id: 77,
+          name: "Maya Chen",
+          email: null,
+        },
+        "ticket.brand": {
+          id: 123,
+          name: "Solution Peptides",
+          subdomain: null,
+        },
+        "ticket.conversation": [
+          {
+            author: { name: "System" },
+            message: { content: null, contentType: null },
+            timestamp: "2026-07-20T12:00:00Z",
+          },
+        ],
+        currentUser: { id: 9, name: "Agent" },
+      }),
+    } as unknown as ZafClient;
+
+    const context = await getTicketContext(client);
+
+    expect(context.ticket.subject).toBe("");
+    expect(context.ticket.requester).toEqual({
+      id: 77,
+      name: "Maya Chen",
+    });
+    expect(context.ticket.brand).toEqual({
+      id: 123,
+      name: "Solution Peptides",
+    });
+    expect(context.ticket.recentConversation[0]?.body).toBe("");
+  });
 });

@@ -140,6 +140,9 @@ function Workspace({ ready }: { ready: ReadyApp }) {
         <AssistantSettings
           model={ready.settings.anthropicModel}
           effort={ready.settings.anthropicEffort}
+          workerUrl={ready.settings.workerUrl}
+          workerHost={ready.settings.workerHost}
+          zendeskSubdomain={ready.settings.zendeskSubdomain}
         />
       )}
     </main>
@@ -191,9 +194,29 @@ export function App() {
 
   useEffect(() => {
     let active = true;
-    void Promise.all([client.metadata(), getTicketContext(client)])
-      .then(async ([metadata, context]) => {
-        const settings = parseVisibleSettings(metadata.settings);
+    void (async () => {
+      let settings: VisibleSettings;
+      try {
+        const metadata = await client.metadata();
+        settings = parseVisibleSettings(metadata.settings);
+      } catch {
+        if (active) {
+          setError("Resolve settings are incomplete or invalid.");
+        }
+        return;
+      }
+
+      let context: ActiveTicketContext;
+      try {
+        context = await getTicketContext(client);
+      } catch {
+        if (active) {
+          setError("Zendesk ticket context is unavailable.");
+        }
+        return;
+      }
+
+      try {
         const worker = new WorkerClient(client, settings);
         const controller = new ChatController({
           worker,
@@ -202,14 +225,14 @@ export function App() {
         });
         await controller.loadHistory(context.ticket.ticketId);
         if (active) setReady({ context, worker, controller, settings });
-      })
-      .catch(() => {
+      } catch {
         if (active) {
           setError(
-            "Resolve could not load this ticket. Check the app settings and reload.",
+            "Resolve could not connect to its Worker. Check the backend token and reload.",
           );
         }
-      });
+      }
+    })();
     return () => {
       active = false;
     };

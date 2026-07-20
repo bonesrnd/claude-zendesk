@@ -3,9 +3,18 @@ import type { AnthropicEffort } from "@resolve/contracts";
 interface AssistantSettingsProps {
   model: string;
   effort: AnthropicEffort;
+  workerUrl: string;
+  workerHost: string;
+  zendeskSubdomain: string;
 }
 
-export function AssistantSettings({ model, effort }: AssistantSettingsProps) {
+export function AssistantSettings({
+  model,
+  effort,
+  workerUrl,
+  workerHost,
+  zendeskSubdomain,
+}: AssistantSettingsProps) {
   const effortLabel = effort.slice(0, 1).toUpperCase() + effort.slice(1);
 
   return (
@@ -23,6 +32,18 @@ export function AssistantSettings({ model, effort }: AssistantSettingsProps) {
         <div>
           <dt>Effort</dt>
           <dd>{effortLabel}</dd>
+        </div>
+        <div>
+          <dt>Worker URL</dt>
+          <dd>{workerUrl}</dd>
+        </div>
+        <div>
+          <dt>Worker hostname</dt>
+          <dd>{workerHost}</dd>
+        </div>
+        <div>
+          <dt>Zendesk subdomain</dt>
+          <dd>{zendeskSubdomain}</dd>
         </div>
       </dl>
       <div className="settings-help">
