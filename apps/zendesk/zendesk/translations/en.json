@@ -17,8 +17,11 @@
       "anthropic_model": {
         "label": "Anthropic model"
       },
-      "woo_base_url": {
-        "label": "WooCommerce store URL"
+      "woo_solution_peptides_base_url": {
+        "label": "Solution Peptides WooCommerce URL"
+      },
+      "woo_atomik_labz_base_url": {
+        "label": "Atomik Labz WooCommerce URL"
       },
       "shipstation_mode": {
         "label": "ShipStation API mode (v2, v1, or auto)"
@@ -29,11 +32,17 @@
       "anthropic_api_key": {
         "label": "Anthropic API key"
       },
-      "woo_consumer_key": {
-        "label": "WooCommerce consumer key"
+      "woo_solution_peptides_consumer_key": {
+        "label": "Solution Peptides WooCommerce consumer key"
       },
-      "woo_consumer_secret": {
-        "label": "WooCommerce consumer secret"
+      "woo_solution_peptides_consumer_secret": {
+        "label": "Solution Peptides WooCommerce consumer secret"
+      },
+      "woo_atomik_labz_consumer_key": {
+        "label": "Atomik Labz WooCommerce consumer key"
+      },
+      "woo_atomik_labz_consumer_secret": {
+        "label": "Atomik Labz WooCommerce consumer secret"
       },
       "shipstation_v2_key": {
         "label": "ShipStation v2 API key"

@@ -1,3 +1,4 @@
+import type { TicketBrand } from "@resolve/contracts";
 import { useEffect, useState } from "react";
 
 import type { SkillStatus, WorkerClient } from "../../api/worker-client";
@@ -7,9 +8,10 @@ export type SkillsWorker = Pick<WorkerClient, "listSkills" | "checkSkill">;
 interface SkillsManagerProps {
   worker: SkillsWorker;
   ticketId: number;
+  brand: TicketBrand;
 }
 
-export function SkillsManager({ worker, ticketId }: SkillsManagerProps) {
+export function SkillsManager({ worker, ticketId, brand }: SkillsManagerProps) {
   const [skills, setSkills] = useState<SkillStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
@@ -39,7 +41,7 @@ export function SkillsManager({ worker, ticketId }: SkillsManagerProps) {
       [skill.id]: "Checking…",
     }));
     try {
-      const result = await worker.checkSkill(skill.id, ticketId);
+      const result = await worker.checkSkill(skill.id, ticketId, brand);
       setHealth((current) => ({
         ...current,
         [skill.id]: result.message,
@@ -78,6 +80,18 @@ export function SkillsManager({ worker, ticketId }: SkillsManagerProps) {
                   ? "Read only"
                   : "Includes writes"}
               </p>
+              {skill.connections && (
+                <ul className="skill-connections" aria-label="Connections">
+                  {skill.connections.map((connection) => (
+                    <li key={connection.id}>
+                      <span>{connection.name}</span>
+                      <strong>
+                        {connection.configured ? "Ready" : "Needs setup"}
+                      </strong>
+                    </li>
+                  ))}
+                </ul>
+              )}
               {health[skill.id] && (
                 <span className="health-message" role="status">
                   {health[skill.id]}

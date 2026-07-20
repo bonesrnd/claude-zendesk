@@ -563,6 +563,30 @@ h2 {
   margin-top: 3px;
 }
 
+.skill-connections {
+  display: grid;
+  gap: 3px;
+  padding: 0;
+  margin: 7px 0 0;
+  list-style: none;
+}
+
+.skill-connections li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--resolve-muted);
+  font-size: 8px;
+}
+
+.skill-connections strong {
+  color: var(--resolve-green);
+}
+
+.skill-connections li:has(strong:last-child) strong {
+  font-weight: 800;
+}
+
 .health-message {
   display: block;
   margin-top: 5px;

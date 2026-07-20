@@ -35,11 +35,36 @@ describe("NormalizedOrderSchema", () => {
 });
 
 describe("TicketContextSchema", () => {
+  it("requires the active Zendesk brand", () => {
+    expect(
+      TicketContextSchema.safeParse({
+        ticketId: 8421,
+        subject: "Where is my order?",
+        requester: { id: 77, name: "Maya Chen" },
+        recentConversation: [],
+      }).success,
+    ).toBe(false);
+    expect(
+      TicketContextSchema.safeParse({
+        ticketId: 8421,
+        subject: "Where is my order?",
+        requester: { id: 77, name: "Maya Chen" },
+        brand: {
+          id: 123,
+          name: "Solution Peptides",
+          subdomain: "solutionpeptides",
+        },
+        recentConversation: [],
+      }).success,
+    ).toBe(true);
+  });
+
   it("limits the number of conversation entries", () => {
     const result = TicketContextSchema.safeParse({
       ticketId: 8421,
       subject: "Where is my order?",
       requester: { id: 77, name: "Maya Chen" },
+      brand: { id: 123, name: "Solution Peptides" },
       recentConversation: Array.from({ length: 31 }, (_, index) => ({
         authorName: "Agent",
         body: `Message ${index}`,

@@ -155,25 +155,50 @@ export const woocommerceSkill = defineSkill({
     "Use WooCommerce tools for customer and order facts. If a lookup returns no exact record, say so. Do not infer order state.",
   credentials: [
     {
-      settingName: "woo_base_url",
-      headerName: "x-resolve-woo-url",
+      settingName: "woo_solution_peptides_base_url",
+      headerName: "x-resolve-woo-solution-peptides-url",
       required: true,
       secret: false,
     },
     {
-      settingName: "woo_consumer_key",
-      headerName: "x-resolve-woo-key",
+      settingName: "woo_solution_peptides_consumer_key",
+      headerName: "x-resolve-woo-solution-peptides-key",
       required: true,
       secret: true,
     },
     {
-      settingName: "woo_consumer_secret",
-      headerName: "x-resolve-woo-secret",
+      settingName: "woo_solution_peptides_consumer_secret",
+      headerName: "x-resolve-woo-solution-peptides-secret",
+      required: true,
+      secret: true,
+    },
+    {
+      settingName: "woo_atomik_labz_base_url",
+      headerName: "x-resolve-woo-atomik-labz-url",
+      required: true,
+      secret: false,
+    },
+    {
+      settingName: "woo_atomik_labz_consumer_key",
+      headerName: "x-resolve-woo-atomik-labz-key",
+      required: true,
+      secret: true,
+    },
+    {
+      settingName: "woo_atomik_labz_consumer_secret",
+      headerName: "x-resolve-woo-atomik-labz-secret",
       required: true,
       secret: true,
     },
   ],
   tools: [findCustomer, listOrders, getOrder],
+  isConfigured(credentials) {
+    return Boolean(
+      credentials.wooBaseUrl &&
+      credentials.wooConsumerKey &&
+      credentials.wooConsumerSecret,
+    );
+  },
   async healthCheck(context) {
     await client(context).listCustomers();
     return { ok: true, message: "WooCommerce is reachable." };

@@ -7,7 +7,8 @@ const settings: VisibleSettings = {
   workerUrl: "https://resolve.example.workers.dev",
   zendeskSubdomain: "example",
   anthropicModel: "claude-test",
-  wooBaseUrl: "https://store.example",
+  wooSolutionPeptidesBaseUrl: "https://solutionpeptides.net",
+  wooAtomikLabzBaseUrl: "https://atomiklabz.com",
   shipstationMode: "v2",
 };
 
@@ -30,6 +31,7 @@ describe("WorkerClient", () => {
         ticketId: 8421,
         subject: "Where is my order?",
         requester: { id: 77, name: "Maya Chen" },
+        brand: { id: 123, name: "Solution Peptides" },
         recentConversation: [],
       },
       agent: { id: 9, name: "Agent" },
@@ -46,12 +48,18 @@ describe("WorkerClient", () => {
       headers: {
         authorization: "Bearer {{setting.backend_auth_token}}",
         "x-resolve-anthropic-key": "{{setting.anthropic_api_key}}",
-        "x-resolve-woo-key": "{{setting.woo_consumer_key}}",
-        "x-resolve-woo-secret": "{{setting.woo_consumer_secret}}",
+        "x-resolve-woo-solution-peptides-key":
+          "{{setting.woo_solution_peptides_consumer_key}}",
+        "x-resolve-woo-solution-peptides-secret":
+          "{{setting.woo_solution_peptides_consumer_secret}}",
+        "x-resolve-woo-atomik-labz-key":
+          "{{setting.woo_atomik_labz_consumer_key}}",
+        "x-resolve-woo-atomik-labz-secret":
+          "{{setting.woo_atomik_labz_consumer_secret}}",
       },
     });
     expect(options.data).not.toContain("anthropic_api_key");
-    expect(options.data).not.toContain("woo_consumer_secret");
+    expect(options.data).not.toContain("woo_solution_peptides_consumer_secret");
   });
 
   it("rejects malformed Worker responses", async () => {
@@ -67,6 +75,7 @@ describe("WorkerClient", () => {
           ticketId: 8421,
           subject: "",
           requester: { id: 77, name: "Maya" },
+          brand: { id: 123, name: "Solution Peptides" },
           recentConversation: [],
         },
         agent: { id: 9, name: "Agent" },

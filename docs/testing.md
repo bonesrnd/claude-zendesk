@@ -60,16 +60,17 @@ Run in a Zendesk test account:
 
 1. Install the generated ZIP and configure secure settings.
 2. Confirm the active ticket and requester appear.
-3. Ask for a WooCommerce order and verify its citation.
-4. Ask for ShipStation tracking and verify carrier, service, and status.
-5. Test v2 and legacy v1 separately when both are configured.
-6. Ask how a prior requester ticket was resolved and verify ZAF performs the delegated search.
-7. Reload the ticket and verify saved messages.
-8. Open the same ticket as another authorized agent and verify team visibility.
-9. Verify an ambiguous search asks for a selection rather than choosing silently.
-10. Verify one unavailable provider produces a partial, clearly labeled result.
-11. Verify malformed settings produce a safe configuration error.
-12. Verify Worker logs contain no credentials, prompts, or customer messages.
+3. Ask for a WooCommerce order on a Solution Peptides ticket and verify its citation.
+4. Ask for a WooCommerce order on an Atomik Labz ticket and verify the other store is never queried.
+5. Ask for ShipStation tracking and verify carrier, service, and status.
+6. Test v2 and legacy v1 separately when both are configured.
+7. Ask how a prior requester ticket was resolved and verify ZAF performs the delegated search.
+8. Reload the ticket and verify saved messages.
+9. Open the same ticket as another authorized agent and verify team visibility.
+10. Verify an ambiguous search asks for a selection rather than choosing silently.
+11. Verify one unavailable provider produces a partial, clearly labeled result.
+12. Verify malformed settings produce a safe configuration error.
+13. Verify Worker logs contain no credentials, prompts, or customer messages.
 
 Record only pass/fail, correlation IDs, and synthetic record IDs. Do not paste credentials or customer data into test notes.
 

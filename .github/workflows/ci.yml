@@ -35,7 +35,8 @@ jobs:
         env:
           BACKEND_AUTH_TOKEN: ci-dry-run-token
           TENANT_KEY: ci-dry-run-tenant
-          WOO_BASE_URL: https://store.example
+          WOO_SOLUTION_PEPTIDES_BASE_URL: https://solutionpeptides.net
+          WOO_ATOMIK_LABZ_BASE_URL: https://atomiklabz.com
       - name: Validate Zendesk package
         if: env.ZENDESK_SUBDOMAIN != '' && env.ZENDESK_EMAIL != '' && env.ZENDESK_API_TOKEN != ''
         run: pnpm zaf:validate

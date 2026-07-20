@@ -5,6 +5,7 @@ const ticket = {
   ticketId: 8421,
   subject: "Where is my order?",
   requester: { id: 77, name: "Maya Chen", email: "maya@example.com" },
+  brand: { id: 123, name: "Solution Peptides" },
   recentConversation: [],
 };
 
@@ -31,6 +32,12 @@ function workerRequest(path: string, body: unknown, headers?: HeadersInit) {
         "x-resolve-tenant": env.TENANT_KEY,
         "x-resolve-anthropic-key": "anthropic-test",
         "x-resolve-anthropic-model": "claude-test",
+        "x-resolve-woo-solution-peptides-url": "https://solutionpeptides.net",
+        "x-resolve-woo-solution-peptides-key": "woo-sp-key",
+        "x-resolve-woo-solution-peptides-secret": "woo-sp-secret",
+        "x-resolve-woo-atomik-labz-url": "https://atomiklabz.com",
+        "x-resolve-woo-atomik-labz-key": "woo-atomik-key",
+        "x-resolve-woo-atomik-labz-secret": "woo-atomik-secret",
         ...headers,
       },
       body: JSON.stringify(body),
@@ -120,6 +127,27 @@ describe("POST /v1/turn", () => {
       kind: "error",
       code: "validation_error",
     });
+  });
+
+  it("rejects tickets from an unmapped brand before using WooCommerce", async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await workerRequest("/v1/turn", {
+      message: "Check the latest order",
+      ticket: {
+        ...ticket,
+        brand: { id: 999, name: "Unknown Brand" },
+      },
+      agent: { id: 9, name: "Agent" },
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      kind: "error",
+      code: "configuration_error",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("pauses and resumes delegated Zendesk tools", async () => {

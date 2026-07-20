@@ -12,14 +12,27 @@ describe("SkillsManager", () => {
           id: "woocommerce",
           name: "WooCommerce",
           version: "1.0.0",
-          configured: true,
+          configured: false,
           tools: [{ name: "woocommerce_get_order", risk: "read" as const }],
+          connections: [
+            {
+              id: "solution_peptides",
+              name: "Solution Peptides",
+              configured: true,
+            },
+            {
+              id: "atomik_labz",
+              name: "Atomik Labz",
+              configured: false,
+            },
+          ],
         },
       ],
     }));
     render(
       <SkillsManager
         ticketId={8421}
+        brand={{ id: 123, name: "Solution Peptides" }}
         worker={{
           listSkills,
           checkSkill: vi.fn(),
@@ -28,7 +41,9 @@ describe("SkillsManager", () => {
     );
 
     expect(await screen.findByText("WooCommerce")).toBeInTheDocument();
-    expect(screen.getByText("Ready")).toBeInTheDocument();
+    expect(screen.getByText("Not configured")).toBeInTheDocument();
+    expect(screen.getByText("Solution Peptides")).toBeInTheDocument();
+    expect(screen.getByText("Atomik Labz")).toBeInTheDocument();
     expect(screen.queryByText(/consumer key/i)).not.toBeInTheDocument();
   });
 
@@ -42,6 +57,7 @@ describe("SkillsManager", () => {
     render(
       <SkillsManager
         ticketId={8421}
+        brand={{ id: 123, name: "Solution Peptides" }}
         worker={{
           listSkills: vi.fn(async () => ({
             skills: [
@@ -61,7 +77,10 @@ describe("SkillsManager", () => {
 
     await user.click(await screen.findByRole("button", { name: "Test" }));
 
-    expect(checkSkill).toHaveBeenCalledWith("woocommerce", 8421);
+    expect(checkSkill).toHaveBeenCalledWith("woocommerce", 8421, {
+      id: 123,
+      name: "Solution Peptides",
+    });
     expect(
       await screen.findByText("WooCommerce is reachable."),
     ).toBeInTheDocument();

@@ -3,6 +3,7 @@ import {
   TurnRequestSchema,
   TurnResponseSchema,
   type ContinueTurnRequest,
+  type TicketBrand,
   type TurnRequest,
   type TurnResponse,
 } from "@resolve/contracts";
@@ -14,7 +15,8 @@ export interface VisibleSettings {
   workerUrl: string;
   zendeskSubdomain: string;
   anthropicModel: string;
-  wooBaseUrl: string;
+  wooSolutionPeptidesBaseUrl: string;
+  wooAtomikLabzBaseUrl: string;
   shipstationMode: string;
 }
 
@@ -22,7 +24,8 @@ const VisibleSettingsSchema = z.object({
   worker_url: z.url(),
   zendesk_subdomain: z.string().min(1),
   anthropic_model: z.string().min(1),
-  woo_base_url: z.url(),
+  woo_solution_peptides_base_url: z.url(),
+  woo_atomik_labz_base_url: z.url(),
   shipstation_mode: z.enum(["v2", "v1", "auto"]),
 });
 
@@ -34,7 +37,8 @@ export function parseVisibleSettings(
     workerUrl: parsed.worker_url,
     zendeskSubdomain: parsed.zendesk_subdomain,
     anthropicModel: parsed.anthropic_model,
-    wooBaseUrl: parsed.woo_base_url,
+    wooSolutionPeptidesBaseUrl: parsed.woo_solution_peptides_base_url,
+    wooAtomikLabzBaseUrl: parsed.woo_atomik_labz_base_url,
     shipstationMode: parsed.shipstation_mode,
   };
 }
@@ -97,6 +101,15 @@ const SkillsResponseSchema = z.strictObject({
           risk: z.enum(["read", "write"]),
         }),
       ),
+      connections: z
+        .array(
+          z.strictObject({
+            id: z.string(),
+            name: z.string(),
+            configured: z.boolean(),
+          }),
+        )
+        .optional(),
     }),
   ),
 });
@@ -108,8 +121,13 @@ export type SkillStatus = z.infer<
 const SECURE_HEADERS = {
   authorization: "Bearer {{setting.backend_auth_token}}",
   "x-resolve-anthropic-key": "{{setting.anthropic_api_key}}",
-  "x-resolve-woo-key": "{{setting.woo_consumer_key}}",
-  "x-resolve-woo-secret": "{{setting.woo_consumer_secret}}",
+  "x-resolve-woo-solution-peptides-key":
+    "{{setting.woo_solution_peptides_consumer_key}}",
+  "x-resolve-woo-solution-peptides-secret":
+    "{{setting.woo_solution_peptides_consumer_secret}}",
+  "x-resolve-woo-atomik-labz-key": "{{setting.woo_atomik_labz_consumer_key}}",
+  "x-resolve-woo-atomik-labz-secret":
+    "{{setting.woo_atomik_labz_consumer_secret}}",
   "x-resolve-shipstation-v2-key": "{{setting.shipstation_v2_key}}",
   "x-resolve-shipstation-v1-key": "{{setting.shipstation_v1_key}}",
   "x-resolve-shipstation-v1-secret": "{{setting.shipstation_v1_secret}}",
@@ -134,7 +152,9 @@ export class WorkerClient {
       ...SECURE_HEADERS,
       "x-resolve-tenant": this.settings.zendeskSubdomain,
       "x-resolve-anthropic-model": this.settings.anthropicModel,
-      "x-resolve-woo-url": this.settings.wooBaseUrl,
+      "x-resolve-woo-solution-peptides-url":
+        this.settings.wooSolutionPeptidesBaseUrl,
+      "x-resolve-woo-atomik-labz-url": this.settings.wooAtomikLabzBaseUrl,
       "x-resolve-shipstation-mode": this.settings.shipstationMode,
     };
   }
@@ -198,7 +218,7 @@ export class WorkerClient {
     return this.request("/v1/skills", SkillsResponseSchema);
   }
 
-  checkSkill(skillId: string, ticketId: number) {
+  checkSkill(skillId: string, ticketId: number, brand: TicketBrand) {
     return this.request(
       `/v1/skills/${encodeURIComponent(skillId)}/health`,
       z.strictObject({
@@ -206,7 +226,7 @@ export class WorkerClient {
         ok: z.boolean(),
         message: z.string(),
       }),
-      { method: "POST", body: { ticketId } },
+      { method: "POST", body: { ticketId, brand } },
     );
   }
 }

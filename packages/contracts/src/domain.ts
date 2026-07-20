@@ -6,10 +6,17 @@ export const RequesterSchema = z.strictObject({
   email: z.email().optional(),
 });
 
+export const TicketBrandSchema = z.strictObject({
+  id: z.number().int().positive(),
+  name: z.string().min(1).max(200),
+  subdomain: z.string().min(1).max(200).optional(),
+});
+
 export const TicketContextSchema = z.strictObject({
   ticketId: z.number().int().positive(),
   subject: z.string().max(500),
   requester: RequesterSchema,
+  brand: TicketBrandSchema,
   recentConversation: z
     .array(
       z.strictObject({
@@ -106,6 +113,7 @@ export const NormalizedShipmentSchema = z.strictObject({
 });
 
 export type Requester = z.infer<typeof RequesterSchema>;
+export type TicketBrand = z.infer<typeof TicketBrandSchema>;
 export type TicketContext = z.infer<typeof TicketContextSchema>;
 export type Citation = z.infer<typeof CitationSchema>;
 export type ToolEvent = z.infer<typeof ToolEventSchema>;

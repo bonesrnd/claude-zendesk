@@ -4,10 +4,16 @@ import {
   DelegatedToolResponseSchema,
   TurnRequestSchema,
   type ErrorResponse,
+  type TicketBrand,
 } from "@resolve/contracts";
 import { skillRegistry } from "@resolve/skills";
 
-import { readCredentials } from "../http/credentials";
+import {
+  readCredentials,
+  resolveWooStoreForBrand,
+  wooCredentialSourceForStore,
+  type WooCredentialSource,
+} from "../http/credentials";
 import { errorResponse } from "../http/errors";
 import { readJsonBody } from "../http/json";
 import { AnthropicModelClient } from "../model/anthropic-client";
@@ -24,14 +30,22 @@ function tenant(request: Request): string {
   return request.headers.get("x-resolve-tenant")?.trim() ?? "";
 }
 
-function toolContext(request: Request, env: Env, ticketId: number) {
+function wooSource(
+  brand: TicketBrand,
+  env: Env,
+): WooCredentialSource | undefined {
+  const store = resolveWooStoreForBrand(brand);
+  return store ? wooCredentialSourceForStore(store, env) : undefined;
+}
+
+function toolContext(
+  request: Request,
+  woo: WooCredentialSource,
+  ticketId: number,
+) {
   return {
     signal: request.signal,
-    credentials: {
-      ...readCredentials(request.headers, {
-        wooBaseUrl: env.WOO_BASE_URL,
-      }),
-    },
+    credentials: { ...readCredentials(request.headers, woo) },
     tenantKey: tenant(request),
     ticketId,
   };
@@ -128,9 +142,17 @@ export async function handleTurn(
   env: Env,
 ): Promise<Response> {
   const body = TurnRequestSchema.parse(await readJsonBody(request));
-  const credentials = readCredentials(request.headers, {
-    wooBaseUrl: env.WOO_BASE_URL,
-  });
+  const woo = wooSource(body.ticket.brand, env);
+  if (!woo) {
+    return errorResponse(
+      400,
+      "configuration_error",
+      `Brand ${body.ticket.brand.name} is not mapped to a WooCommerce store.`,
+      false,
+      "woocommerce",
+    );
+  }
+  const credentials = readCredentials(request.headers, woo);
   if (!credentials.anthropicApiKey) {
     return errorResponse(
       400,
@@ -185,7 +207,7 @@ export async function handleTurn(
       role: message.role,
       content: message.content,
     })),
-    toolContext: toolContext(request, env, body.ticket.ticketId),
+    toolContext: toolContext(request, woo, body.ticket.ticketId),
     pendingTurns: new PendingTurnRepository(env.DB),
   });
   return resultResponse(result, conversation.id, conversations);
@@ -196,19 +218,6 @@ export async function handleContinueTurn(
   env: Env,
 ): Promise<Response> {
   const body = ContinueTurnRequestSchema.parse(await readJsonBody(request));
-  const credentials = readCredentials(request.headers, {
-    wooBaseUrl: env.WOO_BASE_URL,
-  });
-  if (!credentials.anthropicApiKey) {
-    return errorResponse(
-      400,
-      "configuration_error",
-      "Anthropic is not configured.",
-      false,
-      "anthropic",
-    );
-  }
-
   const pending = new PendingTurnRepository(env.DB);
   const saved = await pending.consume(body.turnId);
   if (!saved) {
@@ -233,6 +242,26 @@ export async function handleContinueTurn(
     );
   }
   const state = parsePendingTurnState(saved.state);
+  const woo = wooSource(state.ticket.brand, env);
+  if (!woo) {
+    return errorResponse(
+      400,
+      "configuration_error",
+      `Brand ${state.ticket.brand.name} is not mapped to a WooCommerce store.`,
+      false,
+      "woocommerce",
+    );
+  }
+  const credentials = readCredentials(request.headers, woo);
+  if (!credentials.anthropicApiKey) {
+    return errorResponse(
+      400,
+      "configuration_error",
+      "Anthropic is not configured.",
+      false,
+      "anthropic",
+    );
+  }
   const result = await resumeTurn({
     model: new AnthropicModelClient(
       credentials.anthropicApiKey,
@@ -242,7 +271,7 @@ export async function handleContinueTurn(
     conversationId: conversation.id,
     state,
     delegatedResults: body.results,
-    toolContext: toolContext(request, env, conversation.ticketId),
+    toolContext: toolContext(request, woo, conversation.ticketId),
     pendingTurns: pending,
   });
   return resultResponse(result, conversation.id, conversations);

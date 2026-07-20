@@ -8,7 +8,8 @@ import { defineConfig } from "vitest/config";
 
 process.env.BACKEND_AUTH_TOKEN = "test-backend-token";
 process.env.TENANT_KEY = "test-tenant";
-process.env.WOO_BASE_URL = "https://store.example";
+process.env.WOO_SOLUTION_PEPTIDES_BASE_URL = "https://solutionpeptides.net";
+process.env.WOO_ATOMIK_LABZ_BASE_URL = "https://atomiklabz.com";
 
 export default defineConfig({
   plugins: [
@@ -21,7 +22,8 @@ export default defineConfig({
           ),
           BACKEND_AUTH_TOKEN: "test-backend-token",
           TENANT_KEY: "test-tenant",
-          WOO_BASE_URL: "https://store.example",
+          WOO_SOLUTION_PEPTIDES_BASE_URL: "https://solutionpeptides.net",
+          WOO_ATOMIK_LABZ_BASE_URL: "https://atomiklabz.com",
         },
       },
     })),

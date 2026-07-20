@@ -39,7 +39,12 @@
       "required": true
     },
     {
-      "name": "woo_base_url",
+      "name": "woo_solution_peptides_base_url",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "woo_atomik_labz_base_url",
       "type": "text",
       "required": true
     },
@@ -63,14 +68,28 @@
       "scopes": ["header"]
     },
     {
-      "name": "woo_consumer_key",
+      "name": "woo_solution_peptides_consumer_key",
       "type": "text",
       "required": true,
       "secure": true,
       "scopes": ["header"]
     },
     {
-      "name": "woo_consumer_secret",
+      "name": "woo_solution_peptides_consumer_secret",
+      "type": "text",
+      "required": true,
+      "secure": true,
+      "scopes": ["header"]
+    },
+    {
+      "name": "woo_atomik_labz_consumer_key",
+      "type": "text",
+      "required": true,
+      "secure": true,
+      "scopes": ["header"]
+    },
+    {
+      "name": "woo_atomik_labz_consumer_secret",
       "type": "text",
       "required": true,
       "secure": true,

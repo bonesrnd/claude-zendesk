@@ -119,6 +119,7 @@ function Workspace({ ready }: { ready: ReadyApp }) {
         <SkillsManager
           worker={ready.worker}
           ticketId={ready.context.ticket.ticketId}
+          brand={ready.context.ticket.brand}
         />
       )}
     </main>

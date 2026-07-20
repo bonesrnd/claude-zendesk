@@ -1,5 +1,6 @@
 import {
   AgentIdentitySchema,
+  TicketBrandSchema,
   TicketContextSchema,
   type AgentIdentity,
   type TicketContext,
@@ -46,10 +47,12 @@ export async function getTicketContext(
     "ticket.id",
     "ticket.subject",
     "ticket.requester",
+    "ticket.brand",
     "ticket.conversation",
     "currentUser",
   ]);
   const requester = RequesterSchema.parse(result["ticket.requester"]);
+  const brand = TicketBrandSchema.parse(result["ticket.brand"]);
   const user = UserSchema.parse(result.currentUser);
   const conversation = z
     .array(ConversationEntrySchema)
@@ -71,6 +74,7 @@ export async function getTicketContext(
         name: requester.name,
         ...(requester.email ? { email: requester.email } : {}),
       },
+      brand,
       recentConversation: conversation,
     }),
     agent: AgentIdentitySchema.parse(user),

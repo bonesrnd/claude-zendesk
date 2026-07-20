@@ -6,6 +6,7 @@ import {
 } from "../routes/history";
 import { handleSkillHealth, handleSkills } from "../routes/skills";
 import { handleContinueTurn, handleTurn } from "../routes/turn";
+import { WOO_STORE_HEADERS } from "./credentials";
 import { errorResponse } from "./errors";
 import { JsonRequestError } from "./json";
 
@@ -14,16 +15,28 @@ function tenantMatches(request: Request, env: Env): boolean {
 }
 
 function wooOriginMatches(request: Request, env: Env): boolean {
-  const requested = request.headers.get("x-resolve-woo-url")?.trim();
-  if (!requested) return true;
   try {
-    const requestedUrl = new URL(requested);
-    const pinnedUrl = new URL(env.WOO_BASE_URL);
-    return (
-      requestedUrl.protocol === "https:" &&
-      pinnedUrl.protocol === "https:" &&
-      requestedUrl.origin === pinnedUrl.origin
-    );
+    const stores = [
+      {
+        header: WOO_STORE_HEADERS.solution_peptides.url,
+        pinned: env.WOO_SOLUTION_PEPTIDES_BASE_URL,
+      },
+      {
+        header: WOO_STORE_HEADERS.atomik_labz.url,
+        pinned: env.WOO_ATOMIK_LABZ_BASE_URL,
+      },
+    ];
+    return stores.every(({ header, pinned }) => {
+      const requested = request.headers.get(header)?.trim();
+      if (!requested) return true;
+      const requestedUrl = new URL(requested);
+      const pinnedUrl = new URL(pinned);
+      return (
+        requestedUrl.protocol === "https:" &&
+        pinnedUrl.protocol === "https:" &&
+        requestedUrl.origin === pinnedUrl.origin
+      );
+    });
   } catch {
     return false;
   }

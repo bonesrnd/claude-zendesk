@@ -5,12 +5,18 @@
   "compatibility_date": "2026-07-18",
   "compatibility_flags": ["nodejs_compat"],
   "secrets": {
-    "required": ["BACKEND_AUTH_TOKEN", "TENANT_KEY", "WOO_BASE_URL"],
+    "required": [
+      "BACKEND_AUTH_TOKEN",
+      "TENANT_KEY",
+      "WOO_SOLUTION_PEPTIDES_BASE_URL",
+      "WOO_ATOMIK_LABZ_BASE_URL",
+    ],
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "resolve",
+      "database_id": "60707332-13ec-495d-aea7-dcf3f94afac0",
       "migrations_dir": "migrations",
     },
   ],

@@ -31,6 +31,10 @@
 - Use structured logs and timing-safe backend-token comparison.
 - Do not create commits unless the user explicitly authorizes commits during execution.
 
+### Approved two-brand amendment
+
+The original single WooCommerce setting examples below are superseded by two isolated connections. Ticket context must include `ticket.brand`; Solution Peptides maps to `solutionpeptides.net` and Atomik Labz maps to `atomiklabz.com`. Each store has its own visible origin plus secure consumer key/secret. Worker deployment pins both origins with `WOO_SOLUTION_PEPTIDES_BASE_URL` and `WOO_ATOMIK_LABZ_BASE_URL`. Unknown brands fail closed.
+
 ## File map
 
 ### Workspace
@@ -928,7 +932,12 @@ Create `wrangler.jsonc`:
   "compatibility_date": "2026-07-18",
   "compatibility_flags": ["nodejs_compat"],
   "secrets": {
-    "required": ["BACKEND_AUTH_TOKEN", "TENANT_KEY", "WOO_BASE_URL"],
+    "required": [
+      "BACKEND_AUTH_TOKEN",
+      "TENANT_KEY",
+      "WOO_SOLUTION_PEPTIDES_BASE_URL",
+      "WOO_ATOMIK_LABZ_BASE_URL",
+    ],
   },
   "d1_databases": [
     {
@@ -2346,13 +2355,14 @@ Do not deploy or upload from pull-request CI.
 4. local and remote migration commands;
 5. `wrangler secret put BACKEND_AUTH_TOKEN`;
 6. `wrangler secret put TENANT_KEY`;
-7. `wrangler secret put WOO_BASE_URL`;
-8. Worker deployment;
-9. entering the matching backend token and provider credentials in Zendesk installation settings;
-10. ZCLI authentication;
-11. build, validate, package, and private-app upload;
-12. secure-settings limitation in local ZCLI server;
-13. rollback steps for Worker and Zendesk app versions.
+7. `wrangler secret put WOO_SOLUTION_PEPTIDES_BASE_URL`;
+8. `wrangler secret put WOO_ATOMIK_LABZ_BASE_URL`;
+9. Worker deployment;
+10. entering the matching backend token and provider credentials in Zendesk installation settings;
+11. ZCLI authentication;
+12. build, validate, package, and private-app upload;
+13. secure-settings limitation in local ZCLI server;
+14. rollback steps for Worker and Zendesk app versions.
 
 `docs/skills.md` must include the exact scaffold, registration, credential declaration, fixture, test, validation, health-check, and packaging workflow.
 

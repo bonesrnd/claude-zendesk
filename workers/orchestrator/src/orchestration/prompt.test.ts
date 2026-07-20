@@ -9,6 +9,7 @@ describe("buildSystemPrompt", () => {
         ticketId: 8421,
         subject: "Large ticket",
         requester: { id: 77, name: "Maya Chen" },
+        brand: { id: 123, name: "Solution Peptides" },
         recentConversation: Array.from({ length: 30 }, (_, index) => ({
           authorName: "Customer",
           body: `${index}:${"x".repeat(19_990)}`,

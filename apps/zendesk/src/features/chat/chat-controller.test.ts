@@ -9,6 +9,7 @@ const context: ActiveTicketContext = {
     ticketId: 8421,
     subject: "Where is my order?",
     requester: { id: 77, name: "Maya Chen", email: "maya@example.com" },
+    brand: { id: 123, name: "Solution Peptides" },
     recentConversation: [],
   },
   agent: { id: 9, name: "Agent" },

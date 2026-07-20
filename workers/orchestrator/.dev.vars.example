@@ -1,3 +1,4 @@
 BACKEND_AUTH_TOKEN=local-development-token
 TENANT_KEY=example
-WOO_BASE_URL=https://store.example
+WOO_SOLUTION_PEPTIDES_BASE_URL=https://solutionpeptides.net
+WOO_ATOMIK_LABZ_BASE_URL=https://atomiklabz.com

@@ -20,6 +20,11 @@ describe("getTicketContext", () => {
           name: "Maya Chen",
           email: "maya@example.com",
         },
+        "ticket.brand": {
+          id: 123,
+          name: "Solution Peptides",
+          subdomain: "solutionpeptides",
+        },
         "ticket.conversation": conversation,
         currentUser: { id: 9, name: "Agent" },
       }),
@@ -30,6 +35,11 @@ describe("getTicketContext", () => {
     expect(context.ticket.recentConversation).toHaveLength(30);
     expect(context.ticket.recentConversation[0]?.authorName).toBe("Author 1");
     expect(context.ticket.recentConversation[0]?.body).toHaveLength(20_000);
+    expect(context.ticket.brand).toEqual({
+      id: 123,
+      name: "Solution Peptides",
+      subdomain: "solutionpeptides",
+    });
     expect(context.agent).toEqual({ id: 9, name: "Agent" });
   });
 

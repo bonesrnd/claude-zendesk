@@ -19,6 +19,7 @@ The first release is a working, read-only MVP. It proves the complete security a
 - Retention: 90 days, enforced by a scheduled cleanup job.
 - Deployment: one Zendesk account and one private app installation.
 - Historical learning: live Zendesk retrieval with ticket citations, not fine-tuning or a copied vector index.
+- WooCommerce: route Solution Peptides and Atomik Labz tickets to isolated store credentials based on the active Zendesk brand; never search both stores.
 - ShipStation: support API v2 and legacy API v1 behind one normalized adapter.
 - Secrets: entered as Zendesk secure installation settings and injected by Zendesk's proxy into allow-listed Worker requests.
 - Response delivery: non-streaming for the MVP because secure requests pass through the Zendesk proxy. The API boundary will not preclude a later streaming bootstrap.
@@ -119,7 +120,7 @@ The Worker:
 
 The Worker never persists credentials. Credentials received in secure request headers exist only for the duration of the request.
 
-The WooCommerce origin is also configured as a required Worker deployment secret. The Worker compares the visible Zendesk installation value with this server-side pin and rejects any mismatch before forwarding WooCommerce credentials.
+Both WooCommerce origins are configured as required Worker deployment secrets. The Worker maps the active Zendesk ticket brand to Solution Peptides or Atomik Labz, selects only that store's credentials, and rejects unknown brands or origin mismatches before forwarding credentials.
 
 ### Delegated Zendesk tools
 
@@ -309,6 +310,8 @@ Read tools:
 - List a customer's prior orders.
 - Retrieve the details of a selected order.
 
+The ticket's Zendesk brand selects the store connection. Solution Peptides maps to `solutionpeptides.net`; Atomik Labz maps to `atomiklabz.com`. Each connection has an independent consumer key and secret. Unknown brands fail closed and never trigger a cross-store search.
+
 Normalized output includes order status, dates, totals, currency, line items, billing/shipping summaries, shipping method, refunds where returned, and returned metadata. Arbitrary metadata is retrieved from selected records; the MVP does not promise server-side search by arbitrary metadata because the standard WooCommerce API does not provide that filter.
 
 ### ShipStation
@@ -343,7 +346,8 @@ Visible settings:
 - Worker HTTPS URL.
 - Zendesk account/subdomain identifier.
 - Claude model selection or policy.
-- WooCommerce HTTPS origin.
+- Solution Peptides WooCommerce HTTPS origin.
+- Atomik Labz WooCommerce HTTPS origin.
 - ShipStation mode: v2, v1, or automatic preference.
 - Optional skill enablement flags supported by the packaged manifest.
 
@@ -351,19 +355,20 @@ Secure header-only settings:
 
 - Backend authentication token.
 - Anthropic API key.
-- WooCommerce consumer key.
-- WooCommerce consumer secret.
+- Solution Peptides WooCommerce consumer key and secret.
+- Atomik Labz WooCommerce consumer key and secret.
 - ShipStation v2 API key.
 - ShipStation v1 API key.
 - ShipStation v1 API secret.
 
-ShipStation credentials are optional as a group based on the selected mode. WooCommerce and Anthropic credentials are required for their skills to report ready.
+ShipStation credentials are optional as a group based on the selected mode. Both WooCommerce connections and Anthropic credentials are required for their skills to report fully ready; per-store health remains visible.
 
 The app's health view tests configuration without returning secret values.
 
 ## Security and privacy
 
 - Require HTTPS for Worker and WooCommerce origins.
+- Resolve WooCommerce credentials only after validating the active ticket brand against the two explicit brand mappings.
 - Pin secure setting use to the Worker domain through `domainWhitelist`.
 - Compare the proxy-injected backend token with a Cloudflare Worker secret using a timing-safe comparison.
 - Reject unrecognized tenant identifiers and unsafe provider origins.
@@ -475,7 +480,7 @@ CI runs formatting, linting, type checking, unit tests, skill contract tests, Wo
 1. An admin can package and install Resolve as a private ZAF app and enter all required visible and secure settings.
 2. An agent can open a ticket and use the wide Quiet Console chat without leaving Zendesk.
 3. Resolve automatically grounds the first turn in the active ticket and requester.
-4. The agent can retrieve WooCommerce customer, order, prior-order, and returned metadata information.
+4. The agent can retrieve WooCommerce customer, order, prior-order, and returned metadata information from the active ticket brand's store without querying the other store.
 5. The agent can retrieve ShipStation v1 or v2 order, shipment, recipient, carrier, service, and tracking information according to the configured API.
 6. The agent can retrieve the requester's prior Zendesk tickets and search relevant solved tickets under their own permissions.
 7. Answers visibly show tool activity and cite the source records used.
