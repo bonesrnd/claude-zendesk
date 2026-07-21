@@ -30,6 +30,7 @@ function worker(overrides: Partial<ChatWorker> = {}): ChatWorker {
   return {
     startTurn: vi.fn(async () => assistant("Completed")),
     continueTurn: vi.fn(async () => assistant("Continued")),
+    confirmAction: vi.fn(),
     listConversations: vi.fn(async () => ({ conversations: [] })),
     getConversation: vi.fn(async () => ({
       conversation: {
@@ -48,6 +49,204 @@ function worker(overrides: Partial<ChatWorker> = {}): ChatWorker {
 }
 
 describe("ChatController", () => {
+  it("does not execute a proposed write before dedicated confirmation", async () => {
+    const capability = `confirm_${"a".repeat(64)}`;
+    const inspectZendeskProposal = vi.fn(async () => ({
+      recordVersion: "version-1",
+    }));
+    const executeZendeskTool = vi.fn();
+    const executeConfirmedZendeskAction = vi.fn();
+    const controller = new ChatController({
+      worker: worker({
+        startTurn: vi.fn(async (): Promise<TurnResponse> => ({
+          kind: "action_confirmation_required",
+          conversationId: "conv_1",
+          capability,
+          proposal: {
+            id: "turn_write",
+            action: "zendesk_update_customer_profile",
+            targetId: 77,
+            before: { phone: "+15551230000" },
+            changes: { phone: "+15559870000" },
+            expiresAt: "2099-07-21T12:10:00.000Z",
+          },
+        })),
+      }),
+      executeZendeskTool,
+      inspectZendeskProposal,
+      executeConfirmedZendeskAction,
+    });
+
+    await controller.send("Update the phone", context);
+
+    expect(inspectZendeskProposal).toHaveBeenCalledTimes(1);
+    expect(executeZendeskTool).not.toHaveBeenCalled();
+    expect(executeConfirmedZendeskAction).not.toHaveBeenCalled();
+    expect(JSON.stringify(controller.getSnapshot())).not.toContain(capability);
+    expect(controller.getSnapshot()).toMatchObject({
+      status: "ready",
+      activeConversationId: "conv_1",
+      proposal: {
+        id: "turn_write",
+        changes: { phone: "+15559870000" },
+      },
+    });
+  });
+
+  it("does not treat chat text as write confirmation", async () => {
+    const startTurn = vi.fn(async (): Promise<TurnResponse> => ({
+      kind: "action_confirmation_required",
+      conversationId: "conv_1",
+      capability: `confirm_${"b".repeat(64)}`,
+      proposal: {
+        id: "turn_write",
+        action: "zendesk_update_customer_profile",
+        targetId: 77,
+        before: { notes: "Before" },
+        changes: { notes: "After" },
+        expiresAt: "2099-07-21T12:10:00.000Z",
+      },
+    }));
+    const controller = new ChatController({
+      worker: worker({ startTurn }),
+      executeZendeskTool: vi.fn(),
+      inspectZendeskProposal: vi.fn(async () => ({
+        recordVersion: "version-1",
+      })),
+      executeConfirmedZendeskAction: vi.fn(),
+    });
+    await controller.send("Propose a note", context);
+
+    await controller.send("yes", context);
+
+    expect(startTurn).toHaveBeenCalledTimes(1);
+    expect(controller.getSnapshot().proposal).toBeDefined();
+  });
+
+  it("executes, verifies, and continues only after confirmAction", async () => {
+    const confirmAction = vi.fn(async () => ({
+      kind: "delegated_tool_request" as const,
+      turnId: "turn_write",
+      requests: [
+        {
+          toolUseId: "tool_write",
+          toolName: "zendesk_update_customer_profile" as const,
+          input: {
+            userId: 77,
+            recordVersion: "version-1",
+            before: { phone: "+15551230000" },
+            changes: { phone: "+15559870000" },
+          },
+        },
+      ],
+    }));
+    const continueTurn = vi.fn(async () => assistant("Phone update verified."));
+    const executeConfirmedZendeskAction = vi.fn(async (request) => ({
+      toolUseId: request.toolUseId,
+      toolName: request.toolName,
+      output: {
+        targetId: 77,
+        recordVersion: "version-2",
+        before: { phone: "+15551230000" },
+        after: { phone: "+15559870000" },
+        verified: true,
+      },
+      isError: false,
+    }));
+    const inspectZendeskProposal = vi.fn(async () => ({
+      recordVersion: "version-1",
+    }));
+    const controller = new ChatController({
+      worker: worker({
+        startTurn: vi.fn(async (): Promise<TurnResponse> => ({
+          kind: "action_confirmation_required",
+          conversationId: "conv_1",
+          capability: `confirm_${"c".repeat(64)}`,
+          proposal: {
+            id: "turn_write",
+            action: "zendesk_update_customer_profile",
+            targetId: 77,
+            before: { phone: "+15551230000" },
+            changes: { phone: "+15559870000" },
+            expiresAt: "2099-07-21T12:10:00.000Z",
+          },
+        })),
+        confirmAction,
+        continueTurn,
+      }),
+      executeZendeskTool: vi.fn(),
+      inspectZendeskProposal,
+      executeConfirmedZendeskAction,
+    });
+    await controller.send("Update the phone", context);
+
+    await controller.confirmAction();
+
+    expect(inspectZendeskProposal).toHaveBeenCalledTimes(2);
+    expect(confirmAction).toHaveBeenCalledWith("turn_write", {
+      capability: `confirm_${"c".repeat(64)}`,
+      recordVersion: "version-1",
+    });
+    expect(executeConfirmedZendeskAction).toHaveBeenCalledTimes(1);
+    expect(continueTurn).toHaveBeenCalledWith({
+      turnId: "turn_write",
+      results: [
+        expect.objectContaining({
+          toolUseId: "tool_write",
+          isError: false,
+          output: expect.objectContaining({ verified: true }),
+        }),
+      ],
+    });
+    expect(controller.getSnapshot()).toMatchObject({
+      status: "ready",
+      proposal: undefined,
+      messages: [
+        { role: "user" },
+        { role: "assistant", content: "Phone update verified." },
+      ],
+    });
+  });
+
+  it("cannot confirm an expired proposal", async () => {
+    const confirmAction = vi.fn();
+    const executeConfirmedZendeskAction = vi.fn();
+    const controller = new ChatController({
+      worker: worker({
+        startTurn: vi.fn(async (): Promise<TurnResponse> => ({
+          kind: "action_confirmation_required",
+          conversationId: "conv_1",
+          capability: `confirm_${"d".repeat(64)}`,
+          proposal: {
+            id: "turn_write",
+            action: "zendesk_update_customer_profile",
+            targetId: 77,
+            before: { notes: "Before" },
+            changes: { notes: "After" },
+            expiresAt: "2026-07-21T12:10:00.000Z",
+          },
+        })),
+        confirmAction,
+      }),
+      executeZendeskTool: vi.fn(),
+      inspectZendeskProposal: vi.fn(async () => ({
+        recordVersion: "version-1",
+      })),
+      executeConfirmedZendeskAction,
+      now: () => new Date("2026-07-21T12:11:00.000Z"),
+    });
+    await controller.send("Update notes", context);
+
+    await controller.confirmAction();
+
+    expect(confirmAction).not.toHaveBeenCalled();
+    expect(executeConfirmedZendeskAction).not.toHaveBeenCalled();
+    expect(controller.getSnapshot()).toMatchObject({
+      status: "error",
+      error: { code: "proposal_expired" },
+    });
+  });
+
   it("shows the user message before the Worker resolves", async () => {
     let resolve!: (response: TurnResponse) => void;
     const pending = new Promise<TurnResponse>((done) => {

@@ -2,9 +2,12 @@ import {
   CitationSchema,
   TicketContextSchema,
   ToolEventSchema,
+  WriteProposalSchema,
   type Citation,
   type TicketContext,
   type ToolEvent,
+  type WriteProposal,
+  type WriteProposalDraft,
 } from "@resolve/contracts";
 import {
   type RegisteredToolEntry,
@@ -32,11 +35,13 @@ const MAX_MODEL_HISTORY_MESSAGES = 40;
 const MAX_MODEL_HISTORY_CHARS = 80_000;
 
 export interface PendingTurnState {
+  agentId?: number | undefined;
   ticket: TicketContext;
   messages: ModelMessage[];
   completedResults: ModelBlock[];
   citations: Citation[];
   toolEvents: ToolEvent[];
+  retainedArtifacts?: RetainedArtifacts | undefined;
   outstandingToolUseIds: string[];
   remainingModelCalls: number;
   deadlineAt: number;
@@ -59,6 +64,7 @@ const ModelBlockSchema = z.discriminatedUnion("type", [
 ]);
 
 const PendingTurnStateSchema = z.strictObject({
+  agentId: z.number().int().positive().optional(),
   ticket: TicketContextSchema,
   messages: z.array(
     z.strictObject({
@@ -69,6 +75,7 @@ const PendingTurnStateSchema = z.strictObject({
   completedResults: z.array(ModelBlockSchema),
   citations: z.array(CitationSchema),
   toolEvents: z.array(ToolEventSchema),
+  retainedArtifacts: z.record(z.string().min(1), z.unknown()).optional(),
   outstandingToolUseIds: z.array(z.string()),
   remainingModelCalls: z.number().int().min(0).max(TURN_LIMITS.maxModelCalls),
   deadlineAt: z.number().int().positive(),
@@ -85,20 +92,60 @@ interface PendingTurnStore {
   ): Promise<{ id: string }>;
 }
 
+interface WriteProposalStore {
+  save(
+    id: string,
+    conversationId: string,
+    agentId: number,
+    proposal: WriteProposalDraft,
+  ): Promise<{ proposal: WriteProposal; capability: string }>;
+}
+
+export type ServerToolHandler = (
+  input: unknown,
+  context: RuntimeToolExecutionContext,
+) => Promise<unknown>;
+
+export type ServerToolHandlers = Readonly<Record<string, ServerToolHandler>>;
+export type RetainedArtifacts = Record<string, unknown>;
+
+export interface RuntimeToolExecutionContext extends ToolExecutionContext {
+  retainedArtifacts: Readonly<RetainedArtifacts>;
+  retainArtifact(handle: string, value: unknown): void;
+}
+
+export interface DelegatedResultAdaptation {
+  modelOutput: unknown;
+  retainedArtifacts: RetainedArtifacts;
+}
+
+export type DelegatedResultAdapter = (
+  output: unknown,
+) => DelegatedResultAdaptation;
+
+export type DelegatedResultAdapters = Readonly<
+  Record<string, DelegatedResultAdapter>
+>;
+
 interface RunTurnInput {
   model: ModelClient;
   registry: SkillRegistry;
   conversationId: string;
+  agentId?: number;
   ticket: TicketContext;
   messages: ModelMessage[];
   toolContext: ToolExecutionContext;
+  retainedArtifacts?: RetainedArtifacts;
+  serverToolHandlers?: ServerToolHandlers;
   pendingTurns: PendingTurnStore;
+  writeProposals?: WriteProposalStore;
 }
 
 interface ResumeTurnInput {
   model: ModelClient;
   registry: SkillRegistry;
   conversationId: string;
+  agentId?: number;
   state: PendingTurnState;
   delegatedResults: Array<{
     toolUseId: string;
@@ -107,7 +154,10 @@ interface ResumeTurnInput {
     isError: boolean;
   }>;
   toolContext: ToolExecutionContext;
+  delegatedResultAdapters?: DelegatedResultAdapters;
+  serverToolHandlers?: ServerToolHandlers;
   pendingTurns: PendingTurnStore;
+  writeProposals?: WriteProposalStore;
 }
 
 export type RunTurnResult =
@@ -126,6 +176,11 @@ export type RunTurnResult =
         toolName: string;
         input: unknown;
       }>;
+    }
+  | {
+      kind: "confirmation_required";
+      proposal: WriteProposal;
+      capability: string;
     }
   | {
       kind: "error";
@@ -156,6 +211,7 @@ interface ToolOutcome {
     toolName: string;
     input: unknown;
   };
+  proposal?: WriteProposalDraft;
 }
 
 function modelTools(registry: SkillRegistry): ModelTool[] {
@@ -209,7 +265,7 @@ function boundedResult(output: unknown): unknown {
   if (serialized.length <= TURN_LIMITS.maxToolResultChars) return output;
   return {
     truncated: true,
-    content: serialized.slice(0, TURN_LIMITS.maxToolResultChars),
+    originalCharacters: serialized.length,
   };
 }
 
@@ -221,11 +277,21 @@ function toolResult(
   return { type: "tool_result", toolUseId, content, isError };
 }
 
+function proposalTargetsActiveContext(
+  proposal: WriteProposalDraft,
+  ticket: TicketContext,
+): boolean {
+  return proposal.action === "zendesk_update_ticket_custom_fields"
+    ? proposal.targetId === ticket.ticketId
+    : proposal.targetId === ticket.requester.id;
+}
+
 async function executeTool(
   registered: RegisteredToolEntry | undefined,
   call: ToolCall,
   registry: SkillRegistry,
-  context: ToolExecutionContext,
+  context: RuntimeToolExecutionContext,
+  serverToolHandlers?: ServerToolHandlers,
 ): Promise<ToolOutcome> {
   if (!registered) {
     return {
@@ -242,6 +308,28 @@ async function executeTool(
         status: "failed",
         summary: "The requested tool is not registered.",
       },
+    };
+  }
+
+  if (registered.tool.risk === "write") {
+    const parsed = registered.tool.inputSchema.safeParse(call.input);
+    if (!parsed.success || !registered.tool.createProposal) {
+      return {
+        call,
+        result: toolResult(call.id, { error: "invalid_write_proposal" }, true),
+        citations: [],
+        event: {
+          skillId: registered.skill.id,
+          toolName: call.name,
+          status: "failed",
+          summary: "Słones rejected an invalid write proposal.",
+        },
+      };
+    }
+    return {
+      call,
+      citations: [],
+      proposal: registered.tool.createProposal(parsed.data),
     };
   }
 
@@ -272,11 +360,15 @@ async function executeTool(
   }
 
   try {
-    const output = await registry.executeServerTool(
-      call.name,
-      call.input,
-      context,
-    );
+    const runtimeHandler = serverToolHandlers?.[call.name];
+    const output = runtimeHandler
+      ? registered.tool.outputSchema.parse(
+          await runtimeHandler(
+            registered.tool.inputSchema.parse(call.input),
+            context,
+          ),
+        )
+      : await registry.executeServerTool(call.name, call.input, context);
     return {
       call,
       result: toolResult(call.id, boundedResult(output), false),
@@ -357,6 +449,16 @@ async function runLoop(
   const messages = boundedModelMessages(input.messages);
   const citations = [...initialCitations];
   const toolEvents = [...initialEvents];
+  const retainedArtifacts = { ...(input.retainedArtifacts ?? {}) };
+  const retainArtifact = (handle: string, value: unknown): void => {
+    if (!handle || handle.length > 200) {
+      throw new Error("Retained artifact handle is invalid");
+    }
+    if (Object.hasOwn(retainedArtifacts, handle)) {
+      throw new Error("Retained artifact handle already exists");
+    }
+    retainedArtifacts[handle] = structuredClone(value);
+  };
   const system = buildSystemPrompt(
     input.ticket,
     input.registry.skills.map((skill) => skill.instructions),
@@ -474,10 +576,18 @@ async function runLoop(
     messages.push(assistantMessage);
     const outcomes = await Promise.all(
       calls.map((call) =>
-        executeTool(input.registry.getTool(call.name), call, input.registry, {
-          ...input.toolContext,
-          signal,
-        }),
+        executeTool(
+          input.registry.getTool(call.name),
+          call,
+          input.registry,
+          {
+            ...input.toolContext,
+            signal,
+            retainedArtifacts,
+            retainArtifact,
+          },
+          input.serverToolHandlers,
+        ),
       ),
     );
     for (const outcome of outcomes) {
@@ -491,14 +601,76 @@ async function runLoop(
     const delegated = outcomes.flatMap((outcome) =>
       outcome.delegated ? [outcome.delegated] : [],
     );
+    const proposals = outcomes.filter(
+      (outcome): outcome is ToolOutcome & { proposal: WriteProposalDraft } =>
+        outcome.proposal !== undefined,
+    );
 
-    if (delegated.length > 0) {
+    if (proposals.length > 0) {
+      const proposed = proposals[0];
+      if (
+        proposals.length !== 1 ||
+        !proposed ||
+        delegated.length > 0 ||
+        input.agentId === undefined ||
+        !input.writeProposals
+      ) {
+        return {
+          kind: "error",
+          code: "validation_error",
+          message: "Słones could not create a single owned write proposal.",
+          retryable: false,
+        };
+      }
+      if (!proposalTargetsActiveContext(proposed.proposal, input.ticket)) {
+        return {
+          kind: "error",
+          code: "validation_error",
+          message: "The write proposal target is outside the active ticket.",
+          retryable: false,
+        };
+      }
       const saved = await input.pendingTurns.save(input.conversationId, {
+        agentId: input.agentId,
         ticket: input.ticket,
         messages,
         completedResults,
         citations: deduplicateCitations(citations),
         toolEvents,
+        retainedArtifacts,
+        outstandingToolUseIds: [proposed.call.id],
+        remainingModelCalls: budget.remainingModelCalls - modelCall - 1,
+        deadlineAt: budget.deadlineAt,
+      });
+      const created = await input.writeProposals.save(
+        saved.id,
+        input.conversationId,
+        input.agentId,
+        proposed.proposal,
+      );
+      return {
+        kind: "confirmation_required",
+        capability: created.capability,
+        proposal: WriteProposalSchema.parse({
+          id: created.proposal.id,
+          action: created.proposal.action,
+          targetId: created.proposal.targetId,
+          before: created.proposal.before,
+          changes: created.proposal.changes,
+          expiresAt: created.proposal.expiresAt,
+        }),
+      };
+    }
+
+    if (delegated.length > 0) {
+      const saved = await input.pendingTurns.save(input.conversationId, {
+        ...(input.agentId === undefined ? {} : { agentId: input.agentId }),
+        ticket: input.ticket,
+        messages,
+        completedResults,
+        citations: deduplicateCitations(citations),
+        toolEvents,
+        retainedArtifacts,
         outstandingToolUseIds: delegated.map((request) => request.toolUseId),
         remainingModelCalls: budget.remainingModelCalls - modelCall - 1,
         deadlineAt: budget.deadlineAt,
@@ -554,12 +726,20 @@ export async function resumeTurn(
 
   const citations = [...input.state.citations];
   const events = [...input.state.toolEvents];
+  const retainedArtifacts = { ...(input.state.retainedArtifacts ?? {}) };
   const delegatedBlocks = input.delegatedResults.map((result) => {
     const registered = input.registry.getTool(result.toolName);
     const output =
       result.isError || !registered
         ? result.output
         : registered.tool.outputSchema.parse(result.output);
+    const adapted =
+      !result.isError && registered
+        ? input.delegatedResultAdapters?.[result.toolName]?.(output)
+        : undefined;
+    if (adapted) {
+      Object.assign(retainedArtifacts, adapted.retainedArtifacts);
+    }
     if (!result.isError) citations.push(...collectCitations(output));
     events.push({
       skillId: registered?.skill.id ?? "unknown",
@@ -569,7 +749,11 @@ export async function resumeTurn(
         ? "Zendesk lookup failed."
         : "Zendesk lookup completed.",
     });
-    return toolResult(result.toolUseId, boundedResult(output), result.isError);
+    return toolResult(
+      result.toolUseId,
+      boundedResult(adapted?.modelOutput ?? output),
+      result.isError,
+    );
   });
 
   const assistantBlocks = input.state.messages.at(-1)?.content;
@@ -598,10 +782,16 @@ export async function resumeTurn(
       model: input.model,
       registry: input.registry,
       conversationId: input.conversationId,
+      ...(input.agentId === undefined ? {} : { agentId: input.agentId }),
       ticket: input.state.ticket,
       messages,
       toolContext: input.toolContext,
+      retainedArtifacts,
+      ...(input.serverToolHandlers
+        ? { serverToolHandlers: input.serverToolHandlers }
+        : {}),
       pendingTurns: input.pendingTurns,
+      ...(input.writeProposals ? { writeProposals: input.writeProposals } : {}),
     },
     deduplicateCitations(citations),
     events,

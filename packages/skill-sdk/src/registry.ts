@@ -34,6 +34,11 @@ export class SkillRegistry {
         if (tool.risk === "write" && !tool.requiresConfirmation) {
           throw new Error(`Write tool ${tool.name} must require confirmation`);
         }
+        if (tool.risk === "write" && !tool.createProposal) {
+          throw new Error(
+            `Write tool ${tool.name} requires a proposal factory`,
+          );
+        }
         if (this.tools.has(tool.name)) {
           throw new Error(`Duplicate tool name ${tool.name}`);
         }

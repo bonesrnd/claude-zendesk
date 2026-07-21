@@ -4,18 +4,97 @@ import {
   ZendeskGetRequesterTicketsInputSchema,
   ZendeskGetTicketOutputSchema,
   ZendeskSearchSolvedTicketsInputSchema,
+  ZendeskUpdateCustomerProfileInputSchema,
+  ZendeskUpdateTicketCustomFieldsInputSchema,
 } from "./schemas";
 import { zendeskSkill } from "./zendesk.skill";
 
 describe("zendeskSkill", () => {
-  it("declares delegated read tools without handlers", () => {
+  it("declares confirmed delegated writes without handlers", () => {
+    const writes = zendeskSkill.tools.filter((tool) => tool.risk === "write");
+
+    expect(writes.map((tool) => tool.name)).toEqual([
+      "zendesk_update_ticket_custom_fields",
+      "zendesk_update_customer_profile",
+    ]);
     expect(
-      zendeskSkill.tools.every(
+      writes.every(
         (tool) =>
-          tool.risk === "read" &&
           tool.execution === "delegated" &&
+          tool.requiresConfirmation &&
           !tool.handler &&
-          !tool.requiresConfirmation,
+          Boolean(tool.createProposal),
+      ),
+    ).toBe(true);
+  });
+
+  it("restricts profile writes to the approved fields", () => {
+    const base = {
+      userId: 77,
+      recordVersion: "2026-07-21T12:00:00.000Z",
+      before: { phone: "+15551230000" },
+    };
+
+    expect(
+      ZendeskUpdateCustomerProfileInputSchema.safeParse({
+        ...base,
+        changes: {
+          name: "Maya Chen",
+          phone: "+15559870000",
+          notes: "Prefers SMS",
+          organization_id: 42,
+          user_fields: { customer_tier: "gold" },
+        },
+      }).success,
+    ).toBe(true);
+    for (const field of [
+      "email",
+      "role",
+      "password",
+      "suspended",
+      "external_id",
+      "merge_into_id",
+    ]) {
+      expect(
+        ZendeskUpdateCustomerProfileInputSchema.safeParse({
+          ...base,
+          changes: { [field]: "forbidden" },
+        }).success,
+      ).toBe(false);
+    }
+  });
+
+  it("accepts only numeric ticket custom-field identifiers", () => {
+    const base = {
+      ticketId: 8421,
+      recordVersion: "2026-07-21T12:00:00.000Z",
+      before: { "123": "pending" },
+    };
+    expect(
+      ZendeskUpdateTicketCustomFieldsInputSchema.safeParse({
+        ...base,
+        changes: { "123": "approved" },
+      }).success,
+    ).toBe(true);
+    expect(
+      ZendeskUpdateTicketCustomFieldsInputSchema.safeParse({
+        ...base,
+        changes: { status: "closed" },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("declares delegated read tools without handlers", () => {
+    const delegated = zendeskSkill.tools.filter(
+      (tool) => tool.execution === "delegated" && tool.risk === "read",
+    );
+    expect(delegated.map((tool) => tool.name)).toContain(
+      "zendesk_list_voicemails",
+    );
+    expect(
+      delegated.every(
+        (tool) =>
+          tool.risk === "read" && !tool.handler && !tool.requiresConfirmation,
       ),
     ).toBe(true);
   });

@@ -30,7 +30,7 @@ export const TicketContextSchema = z.strictObject({
 });
 
 export const CitationSchema = z.strictObject({
-  provider: z.enum(["zendesk", "woocommerce", "shipstation"]),
+  provider: z.enum(["zendesk", "woocommerce", "shipstation", "knowledge"]),
   label: z.string().min(1).max(200),
   providerId: z.string().min(1).max(200),
   url: z.url(),
@@ -46,6 +46,11 @@ export const ToolEventSchema = z.strictObject({
 export const MetadataEntrySchema = z.strictObject({
   key: z.string().min(1).max(200),
   value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+});
+
+export const NormalizedPhoneSchema = z.strictObject({
+  digits: z.string().regex(/^\d{7,}$/),
+  nationalDigits: z.string().regex(/^\d{7,}$/),
 });
 
 export const NormalizedCustomerSchema = z.strictObject({
@@ -100,6 +105,15 @@ export const NormalizedOrderSchema = z.strictObject({
   metadata: z.array(MetadataEntrySchema).max(200),
 });
 
+export const PhoneSearchResultSchema = z.strictObject({
+  customers: z.array(NormalizedCustomerSchema).max(20),
+  orders: z.array(NormalizedOrderSchema).max(20),
+  citations: z.array(CitationSchema).max(40),
+  searchedRecords: z.number().int().nonnegative(),
+  incomplete: z.boolean(),
+  apiVersion: z.enum(["v1", "v2"]),
+});
+
 export const NormalizedShipmentSchema = z.strictObject({
   provider: z.literal("shipstation"),
   providerId: z.string().min(1),
@@ -118,8 +132,10 @@ export type TicketContext = z.infer<typeof TicketContextSchema>;
 export type Citation = z.infer<typeof CitationSchema>;
 export type ToolEvent = z.infer<typeof ToolEventSchema>;
 export type MetadataEntry = z.infer<typeof MetadataEntrySchema>;
+export type NormalizedPhone = z.infer<typeof NormalizedPhoneSchema>;
 export type NormalizedCustomer = z.infer<typeof NormalizedCustomerSchema>;
 export type AddressSummary = z.infer<typeof AddressSummarySchema>;
 export type RefundSummary = z.infer<typeof RefundSummarySchema>;
 export type NormalizedOrder = z.infer<typeof NormalizedOrderSchema>;
+export type PhoneSearchResult = z.infer<typeof PhoneSearchResultSchema>;
 export type NormalizedShipment = z.infer<typeof NormalizedShipmentSchema>;

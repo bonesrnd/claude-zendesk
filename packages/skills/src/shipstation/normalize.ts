@@ -8,13 +8,14 @@ import {
 } from "@resolve/contracts";
 
 import type {
+  ShipStationV1Customer,
   ShipStationV1Order,
   ShipStationV1Shipment,
   ShipStationV2Shipment,
 } from "./schemas";
 
 function dashboardUrl(
-  path: "orders" | "shipments",
+  path: "customers" | "orders" | "shipments",
   searchValue: string,
 ): string {
   const url = new URL(`https://ship.shipstation.com/${path}`);
@@ -121,6 +122,22 @@ export function recipientFromV2Shipment(
     ...(recipient.email ? { email: recipient.email } : {}),
     ...(recipient.phone ? { phone: recipient.phone } : {}),
     sourceUrl: dashboardUrl("shipments", shipment.shipment_id),
+  });
+}
+
+export function normalizeV1Customer(
+  customer: ShipStationV1Customer,
+): NormalizedCustomer {
+  return NormalizedCustomerSchema.parse({
+    provider: "shipstation",
+    providerId: String(customer.customerId),
+    name:
+      customer.name ||
+      customer.email ||
+      `ShipStation customer ${customer.customerId}`,
+    ...(customer.email ? { email: customer.email } : {}),
+    ...(customer.phone ? { phone: customer.phone } : {}),
+    sourceUrl: dashboardUrl("customers", String(customer.customerId)),
   });
 }
 

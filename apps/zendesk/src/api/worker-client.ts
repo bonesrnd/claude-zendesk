@@ -1,9 +1,14 @@
 import {
+  ActionConfirmationRequestSchema,
+  ActionConfirmationResponseSchema,
   AnthropicEffortSchema,
   AnthropicModelSchema,
+  CitationSchema,
   ContinueTurnRequestSchema,
   TurnRequestSchema,
   TurnResponseSchema,
+  type ActionConfirmationRequest,
+  type ActionConfirmationResponse,
   type ContinueTurnRequest,
   type AnthropicEffort,
   type TicketBrand,
@@ -104,14 +109,7 @@ const StoredMessageSchema = z.object({
   content: z.string(),
   agentId: z.number().optional(),
   agentName: z.string().optional(),
-  citations: z.array(
-    z.strictObject({
-      provider: z.enum(["zendesk", "woocommerce", "shipstation"]),
-      label: z.string(),
-      providerId: z.string(),
-      url: z.url(),
-    }),
-  ),
+  citations: z.array(CitationSchema),
   toolEvents: z.array(
     z.strictObject({
       skillId: z.string(),
@@ -240,6 +238,20 @@ export class WorkerClient {
       method: "POST",
       body: ContinueTurnRequestSchema.parse(input),
     });
+  }
+
+  confirmAction(
+    proposalId: string,
+    input: ActionConfirmationRequest,
+  ): Promise<ActionConfirmationResponse> {
+    return this.request(
+      `/v1/actions/${encodeURIComponent(proposalId)}/confirm`,
+      ActionConfirmationResponseSchema,
+      {
+        method: "POST",
+        body: ActionConfirmationRequestSchema.parse(input),
+      },
+    );
   }
 
   listConversations(ticketId: number) {

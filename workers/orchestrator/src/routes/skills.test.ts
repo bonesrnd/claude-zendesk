@@ -58,6 +58,7 @@ describe("skills routes", () => {
           ],
         },
         { id: "shipstation" },
+        { id: "knowledge", configured: true },
       ],
     });
   });

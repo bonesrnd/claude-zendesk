@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { ActionConfirmationRequiredResponseSchema } from "./actions";
 import { CitationSchema, TicketContextSchema, ToolEventSchema } from "./domain";
 
 export const AnthropicModelSchema = z
@@ -95,6 +96,7 @@ export const ErrorResponseSchema = z.strictObject({
 export const TurnResponseSchema = z.discriminatedUnion("kind", [
   AssistantMessageResponseSchema,
   DelegatedToolResponseSchema,
+  ActionConfirmationRequiredResponseSchema,
   ErrorResponseSchema,
 ]);
 

@@ -67,6 +67,31 @@ export const inventorySkill = defineSkill({
 
 Use `execution: "delegated"` and omit the handler only when the Zendesk iframe must execute the tool under the current agent's permissions.
 
+## Expansion skills
+
+Resolve 1.1 includes these reviewed workflows:
+
+- `shipstation_find_customer_by_phone` performs a bounded public-API scan. Callers must preserve and report `incomplete`; a capped miss is not proof that no record exists.
+- `zendesk_list_voicemails` runs through the current agent's ZAF permissions. `zendesk_transcribe_voicemail` accepts only the opaque handle retained by the Worker, reuses existing Zendesk text when available, and never exposes or persists raw audio.
+- `knowledge_search` returns administrator-authored Markdown as explicitly untrusted context with filename/heading citations. It may guide a workflow but cannot override tool risk, permissions, or confirmation.
+- `zendesk_update_ticket_custom_fields` and `zendesk_update_customer_profile` are write-risk proposal tools. The dispatcher intercepts them and returns an expiring proposal; only the dedicated confirmation endpoint can release one delegated ZAF write.
+
+Knowledge files are managed at the Access-protected Worker admin URL, not uploaded as executable skills. Front matter may supply `brand` and `workflow_category`/`workflowCategory` metadata for Vectorize filtering.
+
+## Define a write proposal tool
+
+Write tools must declare `risk: "write"`, `requiresConfirmation: true`, and a `createProposal` factory. The proposal must carry the active Zendesk target, exact before/after values, and record version. A write handler or ordinary delegated executor must never provide an alternate execution path.
+
+The confirmed Zendesk executor:
+
+1. inspects the current record before showing the proposal;
+2. inspects it again before confirmation;
+3. executes one allowlisted ZAF `PUT` with retry disabled;
+4. refetches the record; and
+5. returns only a verified result to the pending model turn.
+
+Free-form messages such as “yes” are not confirmation. Capabilities are client-private, single-use, and absent from model messages and persisted display history.
+
 ## Register and package
 
 1. Add the skill to `packages/skills/src/registry.ts`.
@@ -94,9 +119,12 @@ Zendesk installation parameters are fixed in the packaged manifest. A new creden
 - Provider responses are parsed before normalization.
 - Read tools cannot mutate provider state.
 - Every write tool must declare `risk: "write"` and `requiresConfirmation: true`.
+- Every write tool must provide a reviewed proposal factory.
 - The registry rejects an unsafe write tool before startup.
 - The dispatcher, not model instructions, enforces risk.
+- Knowledge context cannot change tool risk or confirmation policy.
 - Credentials are never tool inputs, model content, output, D1 data, or logs.
+- Raw voicemail audio and plaintext phone-cache keys are never persisted.
 - Health checks return only `{ ok, message }`.
 
 ## Manage skills

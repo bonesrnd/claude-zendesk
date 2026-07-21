@@ -61,6 +61,20 @@ export const ShipStationV1OrderListSchema = z.object({
   pages: z.number().optional(),
 });
 
+export const ShipStationV1CustomerSchema = z.object({
+  customerId: z.number().int().positive(),
+  name: z.string().nullable().optional().default(""),
+  email: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+});
+
+export const ShipStationV1CustomerListSchema = z.object({
+  customers: z.array(ShipStationV1CustomerSchema),
+  total: z.number().optional(),
+  page: z.number().optional(),
+  pages: z.number().optional(),
+});
+
 export const ShipStationV1ShipmentSchema = z.object({
   shipmentId: z.number().int().positive(),
   orderId: z.number().int().positive().optional(),
@@ -82,5 +96,6 @@ export const ShipStationV1ShipmentListSchema = z.object({
 });
 
 export type ShipStationV2Shipment = z.infer<typeof ShipStationV2ShipmentSchema>;
+export type ShipStationV1Customer = z.infer<typeof ShipStationV1CustomerSchema>;
 export type ShipStationV1Order = z.infer<typeof ShipStationV1OrderSchema>;
 export type ShipStationV1Shipment = z.infer<typeof ShipStationV1ShipmentSchema>;

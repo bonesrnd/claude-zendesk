@@ -19,6 +19,84 @@ const settings: VisibleSettings = {
 };
 
 describe("WorkerClient", () => {
+  it("posts dedicated action confirmation data", async () => {
+    const request = vi.fn().mockResolvedValue({
+      kind: "delegated_tool_request",
+      turnId: "turn_1",
+      requests: [
+        {
+          toolUseId: "tool_write",
+          toolName: "zendesk_update_customer_profile",
+          input: {
+            userId: 77,
+            recordVersion: "version-1",
+            before: { phone: "+15551230000" },
+            changes: { phone: "+15559870000" },
+          },
+        },
+      ],
+    });
+    const worker = new WorkerClient(
+      { request } as unknown as ZafClient,
+      settings,
+    );
+
+    await worker.confirmAction("turn_1", {
+      capability: `confirm_${"a".repeat(64)}`,
+      recordVersion: "version-1",
+    });
+
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: "https://resolve.example.workers.dev/v1/actions/turn_1/confirm",
+        type: "POST",
+        data: JSON.stringify({
+          capability: `confirm_${"a".repeat(64)}`,
+          recordVersion: "version-1",
+        }),
+      }),
+    );
+  });
+
+  it("loads persisted conversation history with a knowledge citation", async () => {
+    const knowledgeCitation = {
+      provider: "knowledge",
+      label: "returns.md — Returns > Approval",
+      providerId: "chunk_returns",
+      url: "https://resolve.example.workers.dev/admin/knowledge#document-doc_returns",
+    };
+    const request = vi.fn().mockResolvedValue({
+      conversation: {
+        id: "conv_knowledge",
+        tenantKey: "example",
+        ticketId: 8421,
+        createdAt: "2026-07-21T12:00:00.000Z",
+        updatedAt: "2026-07-21T12:01:00.000Z",
+        expiresAt: "2026-10-19T12:01:00.000Z",
+      },
+      messages: [
+        {
+          id: "msg_knowledge",
+          conversationId: "conv_knowledge",
+          role: "assistant",
+          content: "Follow the cited approval workflow.",
+          citations: [knowledgeCitation],
+          toolEvents: [],
+          createdAt: "2026-07-21T12:01:00.000Z",
+        },
+      ],
+      toolRuns: [],
+    });
+    const worker = new WorkerClient(
+      { request } as unknown as ZafClient,
+      settings,
+    );
+
+    const history = await worker.getConversation("conv_knowledge");
+
+    expect(history.messages[0]?.citations).toEqual([knowledgeCitation]);
+  });
+
   it("defaults all non-secret single-tenant settings", () => {
     expect(parseVisibleSettings({})).toEqual({
       workerUrl: "https://resolve-orchestrator.bones-baa.workers.dev",

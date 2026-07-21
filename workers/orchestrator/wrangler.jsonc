@@ -10,8 +10,24 @@
       "TENANT_KEY",
       "WOO_SOLUTION_PEPTIDES_BASE_URL",
       "WOO_ATOMIK_LABZ_BASE_URL",
+      "CF_ACCESS_TEAM_DOMAIN",
+      "CF_ACCESS_AUD",
+      "PHONE_CACHE_HMAC_KEY",
     ],
   },
+  "ai": { "binding": "AI" },
+  "r2_buckets": [
+    {
+      "binding": "KNOWLEDGE_BUCKET",
+      "bucket_name": "resolve-knowledge",
+    },
+  ],
+  "vectorize": [
+    {
+      "binding": "KNOWLEDGE_INDEX",
+      "index_name": "resolve-knowledge",
+    },
+  ],
   "d1_databases": [
     {
       "binding": "DB",
@@ -20,6 +36,24 @@
       "migrations_dir": "migrations",
     },
   ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "KNOWLEDGE_INDEX_QUEUE",
+        "queue": "resolve-knowledge-index",
+      },
+    ],
+    "consumers": [
+      {
+        "queue": "resolve-knowledge-index",
+        "max_batch_size": 1,
+        "max_batch_timeout": 1,
+        "max_retries": 5,
+        "max_concurrency": 2,
+        "retry_delay": 60,
+      },
+    ],
+  },
   "ratelimits": [
     {
       "name": "REQUEST_LIMITER",

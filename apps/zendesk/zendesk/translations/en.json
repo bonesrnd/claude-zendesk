@@ -1,9 +1,9 @@
 {
   "app": {
     "name": "Resolve",
-    "short_description": "Ticket-aware customer service research with Claude.",
-    "long_description": "Resolve helps agents retrieve cited customer, order, shipment, tracking, and historical ticket information without leaving Zendesk.",
-    "installation_instructions": "Deploy the Resolve Worker, then enter its HTTPS URL, hostname, tenant settings, and secure integration credentials.",
+    "short_description": "Cited research, voicemail, workflows, and confirmed updates.",
+    "long_description": "Resolve helps agents retrieve cited customer, order, shipment, tracking, voicemail, historical-ticket, and workflow information, then apply approved Zendesk field and profile updates through dedicated confirmation.",
+    "installation_instructions": "Provision the documented Cloudflare bindings, migrations, Queue, Vectorize metadata indexes, and Access policy; deploy the Resolve Worker; then enter its HTTPS URL, hostname, tenant settings, and secure integration credentials.",
     "parameters": {
       "worker_url": {
         "label": "Resolve Worker URL"

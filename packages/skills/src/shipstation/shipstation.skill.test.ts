@@ -28,6 +28,15 @@ describe("shipstationSkill", () => {
           !tool.requiresConfirmation,
       ),
     ).toBe(true);
+    expect(
+      shipstationSkill.tools.find(
+        (tool) => tool.name === "shipstation_find_customer_by_phone",
+      ),
+    ).toMatchObject({
+      risk: "read",
+      execution: "server",
+      requiresConfirmation: false,
+    });
   });
 
   it("finds v2 orders through normalized shipments", async () => {
@@ -117,5 +126,77 @@ describe("shipstationSkill", () => {
         { ...context, credentials: { shipstationMode: "v2" } },
       ),
     ).rejects.toThrow("ShipStation v2 is not configured");
+  });
+
+  it("finds a normalized ShipStation customer by phone", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockResolvedValue(
+        Response.json({
+          customers: [
+            {
+              customerId: 77331,
+              name: "Maya Chen",
+              email: "maya@example.com",
+              phone: "(512) 555-0199",
+            },
+          ],
+          page: 1,
+          pages: 1,
+        }),
+      ),
+    );
+    const registry = new SkillRegistry([shipstationSkill]);
+
+    const output = await registry.executeServerTool(
+      "shipstation_find_customer_by_phone",
+      { phone: "+1 512-555-0199", countryCode: "+1" },
+      {
+        ...context,
+        credentials: {
+          shipstationMode: "auto",
+          shipstationV1Key: "v1-key",
+          shipstationV1Secret: "v1-secret",
+        },
+      },
+    );
+
+    expect(output).toMatchObject({
+      customers: [
+        {
+          providerId: "77331",
+          email: "maya@example.com",
+          phone: "(512) 555-0199",
+        },
+      ],
+      orders: [],
+      searchedRecords: 1,
+      incomplete: false,
+      apiVersion: "v1",
+    });
+    expect(shipstationSkill.instructions).toMatch(/phone lookup/i);
+    expect(shipstationSkill.instructions).toMatch(/incomplete/i);
+  });
+
+  it("rejects phone input with fewer than seven digits before scanning", async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+    const registry = new SkillRegistry([shipstationSkill]);
+
+    await expect(
+      registry.executeServerTool(
+        "shipstation_find_customer_by_phone",
+        { phone: "-------" },
+        {
+          ...context,
+          credentials: {
+            shipstationMode: "auto",
+            shipstationV1Key: "v1-key",
+            shipstationV1Secret: "v1-secret",
+          },
+        },
+      ),
+    ).rejects.toThrow("Phone number must contain at least seven digits");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

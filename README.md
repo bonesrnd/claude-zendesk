@@ -1,13 +1,13 @@
 # Resolve
 
-Resolve is a private Zendesk Support app whose assistant, Słones, gives agents a ticket-aware Claude chat. It retrieves cited customer, order, shipment, tracking, and prior-ticket information from Zendesk, WooCommerce, and ShipStation without leaving the active ticket.
+Resolve is a private Zendesk Support app whose assistant, Słones, gives agents a ticket-aware Claude chat. It retrieves cited customer, order, shipment, tracking, voicemail, prior-ticket, and workflow information without leaving the active ticket.
 
-The current milestone is intentionally read-only. Profile creation, profile merges, shipment tags, shipping-method changes, and every other mutation remain disabled until a later confirmed-write milestone.
+Resolve 1.1 adds bounded ShipStation phone lookup, Zendesk voicemail transcription through Workers AI, administrator-managed Markdown workflow knowledge, and confirmed Zendesk custom-field/customer-profile updates. Writes are limited to reviewed allowlists and require a dedicated confirmation click; free-form chat cannot execute them.
 
 ## Architecture
 
 - `apps/zendesk`: React and ZAF v2 ticket-sidebar app.
-- `workers/orchestrator`: authenticated Cloudflare Worker, Anthropic tool loop, D1 history, and 90-day retention.
+- `workers/orchestrator`: authenticated Cloudflare Worker, Anthropic tool loop, D1 history, Workers AI, R2, Vectorize, Queue-backed indexing, and 90-day retention.
 - `packages/contracts`: schemas shared across the iframe and Worker.
 - `packages/skill-sdk`: versioned skill and tool contracts with enforced risk policy.
 - `packages/skills`: Zendesk, WooCommerce, and ShipStation v1/v2 skill packs.
@@ -20,11 +20,14 @@ Zendesk administrators select Słones's Claude model and effort level in Resolve
 
 Single-tenant visible settings are preconfigured. Zendesk deliberately hides secure values after saving them; private-app updates preserve those values, while the backend token remains a one-time manual secret.
 
+Knowledge administration is separate from the Zendesk app at `https://<worker-host>/admin/knowledge`. Protect `/admin/*` with a Cloudflare Access self-hosted application and an administrator-only policy. The Worker validates the Access JWT's issuer, audience, signature, and time claims; the Zendesk backend token cannot authorize admin routes.
+
 ## Requirements
 
 - Node.js 22 or newer
 - Corepack
 - A Cloudflare account for deployment
+- A D1 database, R2 bucket, 1,024-dimension cosine Vectorize index, Queue, Workers AI access, and Cloudflare Access policy
 - A Zendesk test or production account for private-app installation
 - Anthropic, WooCommerce, and ShipStation credentials for enabled integrations
 
@@ -60,9 +63,11 @@ pnpm test
 pnpm skills:validate
 pnpm build
 pnpm worker:types:check
+pnpm worker:dry-run
+pnpm --filter @resolve/zendesk-app package:zip
 ```
 
-ZCLI validation and packaging require Zendesk authentication:
+ZCLI validation and packaging are local and do not publish the app, but this ZCLI version requires Zendesk environment credentials or an interactive login:
 
 ```bash
 pnpm zaf:validate

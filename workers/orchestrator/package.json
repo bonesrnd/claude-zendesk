@@ -12,6 +12,8 @@
     "@resolve/contracts": "workspace:*",
     "@resolve/skill-sdk": "workspace:*",
     "@resolve/skills": "workspace:*",
+    "ai": "^6.0.230",
+    "workers-ai-provider": "^3.3.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {

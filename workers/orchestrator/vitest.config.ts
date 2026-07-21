@@ -14,7 +14,10 @@ process.env.WOO_ATOMIK_LABZ_BASE_URL = "https://atomiklabz.com";
 export default defineConfig({
   plugins: [
     cloudflareTest(async () => ({
-      wrangler: { configPath: "./wrangler.jsonc" },
+      wrangler: {
+        configPath: "./test/wrangler.test.jsonc",
+        environment: "test",
+      },
       miniflare: {
         bindings: {
           TEST_MIGRATIONS: await readD1Migrations(
@@ -24,6 +27,9 @@ export default defineConfig({
           TENANT_KEY: "test-tenant",
           WOO_SOLUTION_PEPTIDES_BASE_URL: "https://solutionpeptides.net",
           WOO_ATOMIK_LABZ_BASE_URL: "https://atomiklabz.com",
+          CF_ACCESS_TEAM_DOMAIN: "resolve.cloudflareaccess.com",
+          CF_ACCESS_AUD: "test-access-audience",
+          PHONE_CACHE_HMAC_KEY: "test-phone-cache-key",
         },
       },
     })),

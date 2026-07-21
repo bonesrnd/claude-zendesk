@@ -37,6 +37,14 @@ jobs:
           TENANT_KEY: ci-dry-run-tenant
           WOO_SOLUTION_PEPTIDES_BASE_URL: https://solutionpeptides.net
           WOO_ATOMIK_LABZ_BASE_URL: https://atomiklabz.com
+          CF_ACCESS_TEAM_DOMAIN: resolve.cloudflareaccess.com
+          CF_ACCESS_AUD: ci-access-audience
+          PHONE_CACHE_HMAC_KEY: ci-phone-cache-hmac-key
       - name: Validate Zendesk package
         if: env.ZENDESK_SUBDOMAIN != '' && env.ZENDESK_EMAIL != '' && env.ZENDESK_API_TOKEN != ''
         run: pnpm zaf:validate
+      - name: Package with ZCLI
+        if: env.ZENDESK_SUBDOMAIN != '' && env.ZENDESK_EMAIL != '' && env.ZENDESK_API_TOKEN != ''
+        run: pnpm zaf:package
+      - name: Build release ZIP
+        run: pnpm --filter @resolve/zendesk-app package:zip

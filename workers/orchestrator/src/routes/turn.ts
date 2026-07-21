@@ -1,10 +1,15 @@
 import {
+  ActionConfirmationRequiredResponseSchema,
   AssistantMessageResponseSchema,
   AnthropicEffortSchema,
   AnthropicModelSchema,
   ContinueTurnRequestSchema,
   DelegatedToolResponseSchema,
   TurnRequestSchema,
+  ZendeskListVoicemailsOutputSchema,
+  ZendeskReadVoicemailTranscriptChunkInputSchema,
+  ZendeskTranscribeVoicemailInputSchema,
+  ZendeskVoicemailArtifactSchema,
   type ErrorResponse,
   type TicketBrand,
 } from "@resolve/contracts";
@@ -18,15 +23,30 @@ import {
 } from "../http/credentials";
 import { errorResponse } from "../http/errors";
 import { readJsonBody } from "../http/json";
+import {
+  embedKnowledgeDocuments,
+  embedKnowledgeQuery,
+} from "../knowledge/embed";
+import { searchKnowledge } from "../knowledge/search";
 import { AnthropicModelClient } from "../model/anthropic-client";
 import {
   parsePendingTurnState,
   resumeTurn,
   runTurn,
   type RunTurnResult,
+  type DelegatedResultAdapters,
+  type ServerToolHandlers,
 } from "../orchestration/run-turn";
 import { ConversationRepository } from "../repositories/conversations";
+import { KnowledgeRepository } from "../repositories/knowledge";
 import { PendingTurnRepository } from "../repositories/pending-turns";
+import { WriteProposalRepository } from "../repositories/write-proposals";
+import {
+  readVoicemailTranscriptChunk,
+  retainZendeskVoicemails,
+  retainVoicemailTranscript,
+  transcribeVoicemail,
+} from "../services/transcription";
 
 function tenant(request: Request): string {
   return request.headers.get("x-resolve-tenant")?.trim() ?? "";
@@ -58,6 +78,59 @@ function toolContext(
     credentials: { ...readCredentials(request.headers, woo) },
     tenantKey: tenant(request),
     ticketId,
+  };
+}
+
+function serverToolHandlers(env: Env, baseUrl: string): ServerToolHandlers {
+  const knowledge = new KnowledgeRepository({
+    db: env.DB,
+    bucket: env.KNOWLEDGE_BUCKET,
+    index: env.KNOWLEDGE_INDEX,
+    embedDocuments: (documents) => embedKnowledgeDocuments(env.AI, documents),
+  });
+  return {
+    knowledge_search(input) {
+      return searchKnowledge(input, {
+        embedQuery: (query) => embedKnowledgeQuery(env.AI, query),
+        index: {
+          query: (vector, options) =>
+            env.KNOWLEDGE_INDEX.query(vector, options),
+        },
+        loadChunks: (vectorIds) => knowledge.getChunksByVectorIds(vectorIds),
+        baseUrl,
+      });
+    },
+    async zendesk_transcribe_voicemail(input, context) {
+      const { handle } = ZendeskTranscribeVoicemailInputSchema.parse(input);
+      const transcript = await transcribeVoicemail(
+        ZendeskVoicemailArtifactSchema.parse(context.retainedArtifacts[handle]),
+        context.signal,
+        env.AI,
+      );
+      return retainVoicemailTranscript(transcript, (artifactHandle, value) => {
+        context.retainArtifact(artifactHandle, value);
+      });
+    },
+    zendesk_read_voicemail_transcript_chunk(input, context) {
+      const parsed =
+        ZendeskReadVoicemailTranscriptChunkInputSchema.parse(input);
+      return Promise.resolve(
+        readVoicemailTranscriptChunk(
+          parsed,
+          context.retainedArtifacts[parsed.handle],
+        ),
+      );
+    },
+  };
+}
+
+function delegatedResultAdapters(): DelegatedResultAdapters {
+  return {
+    zendesk_list_voicemails(output) {
+      return retainZendeskVoicemails(
+        ZendeskListVoicemailsOutputSchema.parse(output),
+      );
+    },
   };
 }
 
@@ -93,6 +166,16 @@ async function resultResponse(
         kind: "delegated_tool_request",
         turnId: result.turnId,
         requests: result.requests,
+      }),
+    );
+  }
+  if (result.kind === "confirmation_required") {
+    return Response.json(
+      ActionConfirmationRequiredResponseSchema.parse({
+        kind: "action_confirmation_required",
+        conversationId,
+        proposal: result.proposal,
+        capability: result.capability,
       }),
     );
   }
@@ -223,13 +306,16 @@ export async function handleTurn(
     model,
     registry: skillRegistry,
     conversationId: conversation.id,
+    agentId: body.agent.id,
     ticket: body.ticket,
     messages: storedMessages.map((message) => ({
       role: message.role,
       content: message.content,
     })),
     toolContext: toolContext(request, woo, body.ticket.ticketId),
+    serverToolHandlers: serverToolHandlers(env, new URL(request.url).origin),
     pendingTurns: new PendingTurnRepository(env.DB),
+    writeProposals: new WriteProposalRepository(env.DB),
   });
   return resultResponse(result, conversation.id, conversations);
 }
@@ -301,10 +387,14 @@ export async function handleContinueTurn(
     ),
     registry: skillRegistry,
     conversationId: conversation.id,
+    ...(state.agentId === undefined ? {} : { agentId: state.agentId }),
     state,
     delegatedResults: body.results,
     toolContext: toolContext(request, woo, conversation.ticketId),
+    delegatedResultAdapters: delegatedResultAdapters(),
+    serverToolHandlers: serverToolHandlers(env, new URL(request.url).origin),
     pendingTurns: pending,
+    writeProposals: new WriteProposalRepository(env.DB),
   });
   return resultResponse(result, conversation.id, conversations);
 }

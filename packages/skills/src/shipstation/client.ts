@@ -1,6 +1,16 @@
+import {
+  CitationSchema,
+  PhoneSearchResultSchema,
+  type Citation,
+  type NormalizedCustomer,
+  type NormalizedOrder,
+  type NormalizedPhone,
+  type PhoneSearchResult,
+} from "@resolve/contracts";
 import type { ZodType } from "zod";
 
 import {
+  ShipStationV1CustomerListSchema,
   ShipStationV1OrderListSchema,
   ShipStationV1OrderSchema,
   ShipStationV1ShipmentListSchema,
@@ -10,6 +20,12 @@ import {
   type ShipStationV1Shipment,
   type ShipStationV2Shipment,
 } from "./schemas";
+import {
+  normalizeV1Customer,
+  normalizeV2Shipment,
+  recipientFromV2Shipment,
+} from "./normalize";
+import { normalizedPhonesMatch, normalizePhone } from "./phone";
 
 const MAX_RESPONSE_BYTES = 2_000_000;
 
@@ -42,7 +58,58 @@ export interface ShipStationClient {
   getTracking(
     providerId: string,
   ): Promise<ShipStationTrackingRecord | undefined>;
+  findCustomerByPhone(input: {
+    phone: string;
+    countryCode?: string;
+  }): Promise<PhoneSearchResult>;
   health(): Promise<void>;
+}
+
+function phoneCitation(record: NormalizedCustomer | NormalizedOrder): Citation {
+  return CitationSchema.parse({
+    provider: "shipstation",
+    providerId: record.providerId,
+    label:
+      "orderNumber" in record
+        ? `ShipStation ${record.orderNumber}`
+        : `ShipStation customer ${record.name}`,
+    url: record.sourceUrl,
+  });
+}
+
+function phoneSearchResult(input: {
+  customers: NormalizedCustomer[];
+  orders: NormalizedOrder[];
+  searchedRecords: number;
+  incomplete: boolean;
+  apiVersion: "v1" | "v2";
+}): PhoneSearchResult {
+  const citations = [...input.customers, ...input.orders]
+    .map(phoneCitation)
+    .filter(
+      (citation, index, all) =>
+        all.findIndex(
+          (candidate) =>
+            candidate.provider === citation.provider &&
+            candidate.providerId === citation.providerId,
+        ) === index,
+    );
+  return PhoneSearchResultSchema.parse({ ...input, citations });
+}
+
+function phoneMatches(
+  expected: NormalizedPhone,
+  candidate: string,
+  countryCode?: string,
+): boolean {
+  try {
+    return normalizedPhonesMatch(
+      expected,
+      normalizePhone(candidate, countryCode),
+    );
+  } catch {
+    return false;
+  }
 }
 
 export class ShipStationHttpError extends Error {
@@ -208,6 +275,64 @@ export class ShipStationV2Client
     return { version: "v2", shipment };
   }
 
+  async findCustomerByPhone(input: {
+    phone: string;
+    countryCode?: string;
+  }): Promise<PhoneSearchResult> {
+    const phone = normalizePhone(input.phone, input.countryCode);
+    let searchedRecords = 0;
+    let incomplete = false;
+    for (let page = 1; page <= 5; page += 1) {
+      const response = await this.request(
+        "/v2/shipments",
+        {
+          ...(page > 1 ? { page: String(page) } : {}),
+          page_size: "100",
+          sort_by: "created_at",
+          sort_dir: "desc",
+        },
+        ShipStationV2ListSchema,
+      );
+      searchedRecords += response.shipments.length;
+      const hasMore =
+        response.pages !== undefined
+          ? page < response.pages
+          : response.shipments.length === 100;
+      if (page === 5 && hasMore) incomplete = true;
+      const matches = response.shipments
+        .filter(
+          (shipment) =>
+            shipment.ship_to?.phone &&
+            phoneMatches(phone, shipment.ship_to.phone, input.countryCode),
+        )
+        .slice(0, 20);
+      if (matches.length > 0) {
+        const normalized = matches.map((shipment) => ({
+          order: normalizeV2Shipment(shipment).order,
+          customer: recipientFromV2Shipment(shipment),
+        }));
+        return phoneSearchResult({
+          customers: normalized.flatMap(({ customer }) =>
+            customer ? [customer] : [],
+          ),
+          orders: normalized.map(({ order }) => order),
+          searchedRecords,
+          incomplete: incomplete || hasMore,
+          apiVersion: this.version,
+        });
+      }
+
+      if (!hasMore) break;
+    }
+    return phoneSearchResult({
+      customers: [],
+      orders: [],
+      searchedRecords,
+      incomplete,
+      apiVersion: this.version,
+    });
+  }
+
   async health(): Promise<void> {
     await this.request(
       "/v2/shipments",
@@ -287,6 +412,55 @@ export class ShipStationV1Client
     return shipment ? { version: "v1", shipment } : undefined;
   }
 
+  async findCustomerByPhone(input: {
+    phone: string;
+    countryCode?: string;
+  }): Promise<PhoneSearchResult> {
+    const phone = normalizePhone(input.phone, input.countryCode);
+    let searchedRecords = 0;
+    let incomplete = false;
+    for (let page = 1; page <= 10; page += 1) {
+      const response = await this.request(
+        "/customers",
+        { pageSize: "500", page: String(page) },
+        ShipStationV1CustomerListSchema,
+      );
+      searchedRecords += response.customers.length;
+      const currentPage = response.page ?? page;
+      const hasMore =
+        response.pages !== undefined
+          ? currentPage < response.pages
+          : response.customers.length === 500;
+      if (page === 10 && hasMore) incomplete = true;
+      const customers = response.customers
+        .filter(
+          (customer) =>
+            customer.phone &&
+            phoneMatches(phone, customer.phone, input.countryCode),
+        )
+        .slice(0, 20)
+        .map(normalizeV1Customer);
+      if (customers.length > 0) {
+        return phoneSearchResult({
+          customers,
+          orders: [],
+          searchedRecords,
+          incomplete: incomplete || hasMore,
+          apiVersion: this.version,
+        });
+      }
+
+      if (!hasMore) break;
+    }
+    return phoneSearchResult({
+      customers: [],
+      orders: [],
+      searchedRecords,
+      incomplete,
+      apiVersion: this.version,
+    });
+  }
+
   async health(): Promise<void> {
     await this.request(
       "/orders",
@@ -318,4 +492,30 @@ export function createShipStationClient(
     );
   }
   throw new Error("ShipStation v1 is not configured");
+}
+
+export function createShipStationPhoneClient(
+  credentials: Readonly<Record<string, string | undefined>>,
+  signal: AbortSignal,
+): ShipStationClient {
+  const mode = credentials.shipstationMode ?? "auto";
+  if (!["v2", "v1", "auto"].includes(mode)) {
+    throw new Error("ShipStation mode is invalid");
+  }
+  if (mode !== "v2") {
+    if (credentials.shipstationV1Key && credentials.shipstationV1Secret) {
+      return new ShipStationV1Client(
+        credentials.shipstationV1Key,
+        credentials.shipstationV1Secret,
+        signal,
+      );
+    }
+    if (mode === "v1") {
+      throw new Error("ShipStation v1 is not configured");
+    }
+  }
+  if (credentials.shipstationV2Key) {
+    return new ShipStationV2Client(credentials.shipstationV2Key, signal);
+  }
+  throw new Error("ShipStation v2 is not configured");
 }

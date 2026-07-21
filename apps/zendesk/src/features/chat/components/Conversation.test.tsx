@@ -1,8 +1,16 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { ChatMessage } from "../chat-controller";
 import { Conversation } from "./Conversation";
+
+const appCss = readFileSync(
+  resolve(process.cwd(), "src/styles/app.css"),
+  "utf8",
+);
 
 const messages: ChatMessage[] = [
   {
@@ -60,5 +68,55 @@ describe("Conversation", () => {
     expect(
       screen.getByText(/Ask Słones about the customer/i),
     ).toBeInTheDocument();
+  });
+
+  it("applies containment styles to long assistant content", () => {
+    const longMessages: ChatMessage[] = [
+      "x".repeat(300),
+      `https://example.com/${"very-long-path-segment".repeat(30)}`,
+      `Inline code: \`${"token".repeat(80)}\``,
+      `\`\`\`\n${"unbroken-code".repeat(80)}\n\`\`\``,
+      `Column A | Column B\n${"table-cell".repeat(60)} | value`,
+    ].map((content, index) => ({
+      id: `overflow_${index}`,
+      role: "assistant",
+      content,
+      createdAt: `2026-07-18T12:00:0${index}.000Z`,
+      citations: [],
+      toolEvents: [],
+    }));
+    document.documentElement.style.width = "320px";
+    document.body.style.width = "320px";
+    const stylesheet = document.createElement("style");
+    stylesheet.textContent = appCss;
+    document.head.append(stylesheet);
+
+    const { container } = render(<Conversation messages={longMessages} />);
+
+    const messagesAndBubbles = container.querySelectorAll(
+      ".message, .message-bubble",
+    );
+    expect(messagesAndBubbles).toHaveLength(10);
+    for (const element of messagesAndBubbles) {
+      expect(getComputedStyle(element).minWidth).toBe("0px");
+    }
+    for (const bubble of container.querySelectorAll(".message-bubble")) {
+      const textContainers = [bubble, ...bubble.querySelectorAll("*")];
+      for (const element of textContainers) {
+        const style = getComputedStyle(element);
+        expect(style.overflowWrap).toBe("anywhere");
+        expect(style.wordBreak).toBe("break-word");
+      }
+    }
+    const bubble = container.querySelector(".message-bubble");
+    expect(bubble).not.toBeNull();
+    for (const tagName of ["pre", "table"]) {
+      const element = document.createElement(tagName);
+      bubble?.append(element);
+      const style = getComputedStyle(element);
+      expect(style.maxWidth).toBe("100%");
+      expect(style.overflowX).toBe("auto");
+    }
+    stylesheet.remove();
   });
 });

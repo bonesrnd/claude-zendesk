@@ -1,3 +1,4 @@
+export * from "./knowledge/knowledge.skill";
 export * from "./registry";
 export * from "./shipstation";
 export * from "./woocommerce";

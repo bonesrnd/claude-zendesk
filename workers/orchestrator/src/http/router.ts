@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { handleActionConfirmation } from "../routes/actions";
 import {
   handleConversationMessages,
   handleTicketConversations,
@@ -82,6 +83,24 @@ export async function route(request: Request, env: Env): Promise<Response> {
         );
       }
       return await handleContinueTurn(request, env);
+    }
+    const actionConfirmationMatch = pathname.match(
+      /^\/v1\/actions\/([^/]+)\/confirm$/,
+    );
+    if (request.method === "POST" && actionConfirmationMatch?.[1]) {
+      if (!tenantMatches(request, env)) {
+        return errorResponse(
+          403,
+          "unauthorized",
+          "Tenant is not authorized.",
+          false,
+        );
+      }
+      return await handleActionConfirmation(
+        request,
+        env,
+        decodeURIComponent(actionConfirmationMatch[1]),
+      );
     }
     if (request.method === "GET" && pathname === "/v1/skills") {
       if (!tenantMatches(request, env)) {

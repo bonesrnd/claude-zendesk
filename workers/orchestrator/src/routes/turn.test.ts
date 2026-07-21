@@ -48,6 +48,7 @@ function workerRequest(path: string, body: unknown, headers?: HeadersInit) {
 
 beforeEach(async () => {
   await env.DB.batch([
+    env.DB.prepare("DELETE FROM write_proposals"),
     env.DB.prepare("DELETE FROM pending_turns"),
     env.DB.prepare("DELETE FROM tool_runs"),
     env.DB.prepare("DELETE FROM messages"),
@@ -57,9 +58,67 @@ beforeEach(async () => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("POST /v1/turn", () => {
+  it("returns a confirmation proposal instead of delegating a write", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockImplementation(async () =>
+        Response.json(
+          anthropicMessage(
+            [
+              {
+                type: "tool_use",
+                id: "tool_write",
+                name: "zendesk_update_customer_profile",
+                input: {
+                  userId: 77,
+                  recordVersion: "2026-07-21T12:00:00.000Z",
+                  before: { phone: "+15551230000" },
+                  changes: { phone: "+15559870000" },
+                },
+              },
+            ],
+            "tool_use",
+          ),
+        ),
+      ),
+    );
+
+    const response = await workerRequest("/v1/turn", {
+      message: "Update the customer phone",
+      ticket,
+      agent: { id: 9, name: "Agent" },
+    });
+    const body = await response.json<Record<string, unknown>>();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      kind: "action_confirmation_required",
+      conversationId: expect.stringMatching(/^conv_/),
+      capability: expect.stringMatching(/^confirm_[0-9a-f]{64}$/),
+      proposal: {
+        action: "zendesk_update_customer_profile",
+        targetId: 77,
+        before: { phone: "+15551230000" },
+        changes: { phone: "+15559870000" },
+      },
+    });
+    expect(body).not.toHaveProperty("requests");
+    const capability = String(body.capability);
+    const stored = await env.DB.prepare(
+      "SELECT agent_id, status, capability_hash FROM write_proposals",
+    ).first<Record<string, unknown>>();
+    expect(stored).toMatchObject({ agent_id: 9, status: "pending" });
+    expect(stored?.capability_hash).not.toBe(capability);
+    const messages = await env.DB.prepare("SELECT content FROM messages").all();
+    expect(JSON.stringify(messages.results)).not.toContain(capability);
+    expect(JSON.stringify(log.mock.calls)).not.toContain(capability);
+  });
+
   it("creates a conversation and persists both display messages", async () => {
     vi.stubGlobal(
       "fetch",
@@ -258,6 +317,313 @@ describe("POST /v1/turn", () => {
       "SELECT COUNT(*) AS count FROM pending_turns",
     ).first<{ count: number }>();
     expect(pending?.count).toBe(0);
+  });
+
+  it("chunks a long retained transcript after delegated pause and resume", async () => {
+    const requestBodies: Array<Record<string, unknown>> = [];
+    const completeTranscript = `${"A".repeat(6_500)} LATE_MARKER ${"B".repeat(1_000)}`;
+    const citation = {
+      provider: "zendesk",
+      label: "Ticket 7314",
+      providerId: "7314",
+      url: "https://example.zendesk.com/agent/tickets/7314",
+    };
+    const voicemails = Array.from({ length: 30 }, (_, index) => ({
+      ticketId: 7314,
+      commentId: index + 1,
+      recordingUrl: `https://recordings.example/${index + 1}.mp3`,
+      transcriptionText: `${completeTranscript}:${index}`,
+      createdAt: "2026-07-20T12:00:00.000Z",
+    }));
+    let voicemailHandle: string | undefined;
+    let transcriptHandle: string | undefined;
+    let transcriptLength: number | undefined;
+    let retrievedLateContent = false;
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockImplementation(async (input, init) => {
+        const body =
+          input instanceof Request
+            ? await input.clone().json<Record<string, unknown>>()
+            : (JSON.parse(String(init?.body)) as Record<string, unknown>);
+        requestBodies.push(body);
+        if (requestBodies.length === 1) {
+          return Response.json(
+            anthropicMessage(
+              [
+                {
+                  type: "tool_use",
+                  id: "tool_voicemails",
+                  name: "zendesk_list_voicemails",
+                  input: { ticketId: 7314 },
+                },
+              ],
+              "tool_use",
+            ),
+          );
+        }
+        if (requestBodies.length === 2) {
+          const messages = body.messages as Array<{
+            content: Array<{ content?: string; type: string }>;
+          }>;
+          const rawResult = messages.at(-1)?.content[0]?.content;
+          if (!rawResult) throw new Error("Missing compact voicemail result");
+          const compact = JSON.parse(rawResult) as {
+            voicemails: Array<Record<string, unknown>>;
+          };
+          voicemailHandle = String(compact.voicemails[0]?.handle);
+          expect(voicemailHandle).toMatch(/^vm_/);
+          expect(compact.voicemails).toHaveLength(30);
+          expect(compact.voicemails[0]).not.toHaveProperty("recordingUrl");
+          expect(compact.voicemails[0]).not.toHaveProperty("transcriptionText");
+          expect(rawResult).not.toContain("COMPLETE_MARKER");
+          expect(rawResult.length).toBeLessThan(6_000);
+          return Response.json(
+            anthropicMessage(
+              [
+                {
+                  type: "tool_use",
+                  id: "tool_transcribe",
+                  name: "zendesk_transcribe_voicemail",
+                  input: { handle: voicemailHandle },
+                },
+              ],
+              "tool_use",
+            ),
+          );
+        }
+        if (requestBodies.length === 3) {
+          const messages = body.messages as Array<{
+            content: Array<{ content?: string; type: string }>;
+          }>;
+          const rawResult = messages.at(-1)?.content[0]?.content;
+          if (!rawResult) throw new Error("Missing compact transcript result");
+          const compact = JSON.parse(rawResult) as Record<string, unknown>;
+          transcriptHandle = String(compact.handle);
+          transcriptLength = Number(compact.transcriptLength);
+          expect(transcriptHandle).toMatch(/^vmt_/);
+          expect(compact).toMatchObject({
+            preview: expect.any(String),
+            status: "truncated",
+            source: "zendesk_existing",
+          });
+          expect(String(compact.preview).length).toBeLessThanOrEqual(1_000);
+          expect(compact).not.toHaveProperty("text");
+          expect(compact).not.toHaveProperty("content");
+          expect(rawResult).not.toContain("LATE_MARKER");
+          expect(rawResult.length).toBeLessThan(6_000);
+          return Response.json(
+            anthropicMessage(
+              [
+                {
+                  type: "tool_use",
+                  id: "tool_pause",
+                  name: "zendesk_get_requester_tickets",
+                  input: { requesterId: 77, limit: 1 },
+                },
+              ],
+              "tool_use",
+            ),
+          );
+        }
+        if (requestBodies.length === 4) {
+          if (!transcriptHandle) throw new Error("Missing transcript handle");
+          return Response.json(
+            anthropicMessage(
+              [
+                {
+                  type: "tool_use",
+                  id: "tool_chunk",
+                  name: "zendesk_read_voicemail_transcript_chunk",
+                  input: {
+                    handle: transcriptHandle,
+                    offset: 6_400,
+                    length: 300,
+                  },
+                },
+              ],
+              "tool_use",
+            ),
+          );
+        }
+        if (requestBodies.length === 5) {
+          const messages = body.messages as Array<{
+            content: Array<{ content?: string; is_error?: boolean }>;
+          }>;
+          const rawResult = messages.at(-1)?.content[0]?.content;
+          if (!rawResult) throw new Error("Missing transcript chunk result");
+          const chunk = JSON.parse(rawResult) as Record<string, unknown>;
+          expect(chunk).toMatchObject({
+            handle: transcriptHandle,
+            offset: 6_400,
+            status: "more",
+          });
+          expect(String(chunk.text)).toContain("LATE_MARKER");
+          expect(chunk).not.toHaveProperty("content");
+          retrievedLateContent = true;
+          return Response.json(
+            anthropicMessage(
+              [
+                {
+                  type: "tool_use",
+                  id: "tool_out_of_range",
+                  name: "zendesk_read_voicemail_transcript_chunk",
+                  input: {
+                    handle: transcriptHandle,
+                    offset: transcriptLength,
+                    length: 100,
+                  },
+                },
+              ],
+              "tool_use",
+            ),
+          );
+        }
+        if (requestBodies.length === 6) {
+          const messages = body.messages as Array<{
+            content: Array<{ is_error?: boolean }>;
+          }>;
+          expect(messages.at(-1)?.content[0]?.is_error).toBe(true);
+          return Response.json(
+            anthropicMessage(
+              [{ type: "text", text: "The later transcript was retrieved." }],
+              "end_turn",
+            ),
+          );
+        }
+        throw new Error("Unexpected non-model fetch");
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = await workerRequest("/v1/turn", {
+      message: "Review the voicemail",
+      ticket,
+      agent: { id: 9, name: "Agent" },
+    });
+    const delegated = await first.json<{ turnId: string }>();
+
+    const firstContinue = await workerRequest("/v1/turn/continue", {
+      turnId: delegated.turnId,
+      results: [
+        {
+          toolUseId: "tool_voicemails",
+          toolName: "zendesk_list_voicemails",
+          output: {
+            voicemails,
+            citations: [citation],
+          },
+          isError: false,
+        },
+      ],
+    });
+
+    expect(firstContinue.status).toBe(200);
+    const pausedAgain = await firstContinue.json<{
+      kind: string;
+      turnId: string;
+      requests: Array<{ toolName: string }>;
+    }>();
+    expect(pausedAgain).toMatchObject({
+      kind: "delegated_tool_request",
+      requests: [{ toolName: "zendesk_get_requester_tickets" }],
+    });
+
+    const final = await workerRequest("/v1/turn/continue", {
+      turnId: pausedAgain.turnId,
+      results: [
+        {
+          toolUseId: "tool_pause",
+          toolName: "zendesk_get_requester_tickets",
+          output: { tickets: [], citations: [] },
+          isError: false,
+        },
+      ],
+    });
+
+    expect(final.status).toBe(200);
+    await expect(final.json()).resolves.toMatchObject({
+      content: "The later transcript was retrieved.",
+      citations: [{ providerId: "7314" }],
+    });
+    expect(voicemailHandle).toMatch(/^vm_/);
+    expect(transcriptHandle).toMatch(/^vmt_/);
+    expect(transcriptLength).toBe(completeTranscript.length + 2);
+    expect(retrievedLateContent).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+  });
+
+  it.each([
+    {
+      label: "voicemail",
+      toolName: "zendesk_transcribe_voicemail",
+      input: { handle: "vm_12345678-1234-4234-8234-123456789abc" },
+    },
+    {
+      label: "transcript chunk",
+      toolName: "zendesk_read_voicemail_transcript_chunk",
+      input: {
+        handle: "vmt_12345678-1234-4234-8234-123456789abc",
+        offset: 0,
+        length: 100,
+      },
+    },
+  ])("rejects an unrecognized $label handle", async ({ toolName, input }) => {
+    const requestBodies: Array<Record<string, unknown>> = [];
+    const responses = [
+      anthropicMessage(
+        [
+          {
+            type: "tool_use",
+            id: "tool_unrecognized",
+            name: toolName,
+            input,
+          },
+        ],
+        "tool_use",
+      ),
+      anthropicMessage(
+        [{ type: "text", text: "That voicemail is unavailable." }],
+        "end_turn",
+      ),
+    ];
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockImplementation(async (input, init) => {
+        requestBodies.push(
+          input instanceof Request
+            ? await input.clone().json<Record<string, unknown>>()
+            : (JSON.parse(String(init?.body)) as Record<string, unknown>),
+        );
+        const response = responses.shift();
+        if (!response) throw new Error("Unexpected non-model fetch");
+        return Response.json(response);
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await workerRequest("/v1/turn", {
+      message: "Transcribe an unknown voicemail",
+      ticket,
+      agent: { id: 9, name: "Agent" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(requestBodies.at(-1)).toMatchObject({
+      messages: [
+        expect.anything(),
+        expect.anything(),
+        {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "tool_unrecognized",
+              is_error: true,
+            },
+          ],
+        },
+      ],
+    });
   });
 
   it("returns persisted conversation identifiers with partial errors", async () => {

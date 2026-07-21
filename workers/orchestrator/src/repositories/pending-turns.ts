@@ -57,17 +57,30 @@ export class PendingTurnRepository {
   }
 
   async consume(id: string): Promise<PendingTurn | undefined> {
-    const row = await this.db
-      .prepare("SELECT * FROM pending_turns WHERE id = ?")
-      .bind(id)
-      .first<PendingTurnRow>();
-    if (!row) return undefined;
+    const pending = await this.get(id);
+    if (!pending) return undefined;
 
     await this.db
       .prepare("DELETE FROM pending_turns WHERE id = ?")
       .bind(id)
       .run();
-    return mapPendingTurn(row);
+    return pending;
+  }
+
+  async get(id: string): Promise<PendingTurn | undefined> {
+    const row = await this.db
+      .prepare("SELECT * FROM pending_turns WHERE id = ?")
+      .bind(id)
+      .first<PendingTurnRow>();
+    return row ? mapPendingTurn(row) : undefined;
+  }
+
+  async updateState(id: string, state: unknown): Promise<boolean> {
+    const result = await this.db
+      .prepare("UPDATE pending_turns SET state_json = ? WHERE id = ?")
+      .bind(JSON.stringify(state), id)
+      .run();
+    return result.meta.changes === 1;
   }
 
   async deleteExpired(at = this.now()): Promise<number> {

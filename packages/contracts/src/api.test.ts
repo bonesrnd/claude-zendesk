@@ -62,6 +62,28 @@ describe("TurnRequestSchema", () => {
 });
 
 describe("TurnResponseSchema", () => {
+  it("accepts an action confirmation response without a delegated write", () => {
+    const response = TurnResponseSchema.parse({
+      kind: "action_confirmation_required",
+      conversationId: "conv_1",
+      capability: `confirm_${"a".repeat(64)}`,
+      proposal: {
+        id: "turn_1",
+        action: "zendesk_update_customer_profile",
+        targetId: 77,
+        before: { phone: "+15551230000" },
+        changes: { phone: "+15559870000" },
+        expiresAt: "2026-07-21T12:10:00.000Z",
+      },
+    });
+
+    expect(response).toMatchObject({
+      kind: "action_confirmation_required",
+      proposal: { id: "turn_1", targetId: 77 },
+    });
+    expect(response).not.toHaveProperty("requests");
+  });
+
   it("accepts a delegated tool response", () => {
     const response = TurnResponseSchema.parse({
       kind: "delegated_tool_request",

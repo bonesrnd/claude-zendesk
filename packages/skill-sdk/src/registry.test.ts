@@ -19,6 +19,31 @@ function readTool(name: string) {
 }
 
 describe("SkillRegistry", () => {
+  it("rejects confirmed writes without a typed proposal factory", () => {
+    const unsafe = defineSkill({
+      id: "unsafe_proposal",
+      name: "Unsafe proposal",
+      version: "1.0.0",
+      instructions: "Unsafe proposal test skill",
+      credentials: [],
+      tools: [
+        defineTool({
+          name: "missing_proposal",
+          description: "Mutates a record",
+          risk: "write",
+          requiresConfirmation: true,
+          execution: "delegated",
+          inputSchema: Input,
+          outputSchema: Output,
+        }),
+      ],
+    });
+
+    expect(() => new SkillRegistry([unsafe])).toThrow(
+      "Write tool missing_proposal requires a proposal factory",
+    );
+  });
+
   it("rejects write tools without confirmation", () => {
     const unsafe = defineSkill({
       id: "unsafe",
@@ -118,6 +143,32 @@ describe("SkillRegistry", () => {
 });
 
 describe("defineTool", () => {
+  it("preserves a typed write proposal factory", () => {
+    const tool = defineTool({
+      name: "confirmed_write",
+      description: "Mutates a record after confirmation",
+      risk: "write",
+      requiresConfirmation: true,
+      execution: "delegated",
+      inputSchema: Input,
+      outputSchema: Output,
+      createProposal(input) {
+        return {
+          action: "zendesk_update_customer_profile",
+          targetId: 77,
+          before: { name: "Before" },
+          changes: { name: input.id },
+          recordVersion: "version-1",
+        };
+      },
+    });
+
+    expect(tool.createProposal?.({ id: "After" })).toMatchObject({
+      action: "zendesk_update_customer_profile",
+      changes: { name: "After" },
+    });
+  });
+
   it("requires a handler for server tools", () => {
     expect(() =>
       defineTool({

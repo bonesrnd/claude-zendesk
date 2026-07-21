@@ -2,6 +2,7 @@ import {
   CitationSchema,
   NormalizedCustomerSchema,
   NormalizedOrderSchema,
+  PhoneSearchResultSchema,
   NormalizedShipmentSchema,
   type Citation,
   type NormalizedCustomer,
@@ -13,6 +14,7 @@ import { z } from "zod";
 
 import {
   createShipStationClient,
+  createShipStationPhoneClient,
   type ShipStationOrderRecord,
   type ShipStationTrackingRecord,
 } from "./client";
@@ -23,6 +25,8 @@ import {
   recipientFromV1Order,
   recipientFromV2Shipment,
 } from "./normalize";
+
+export { normalizePhone, phonesMatch } from "./phone";
 
 const FindOrdersInput = z
   .strictObject({
@@ -66,6 +70,7 @@ const GetTrackingOutput = z.strictObject({
   shipment: NormalizedShipmentSchema.nullable(),
   citations: z.array(CitationSchema).max(1),
 });
+const PhoneSearchOutputSchema = PhoneSearchResultSchema;
 
 function citation(
   record: NormalizedOrder | NormalizedShipment | NormalizedCustomer,
@@ -215,12 +220,35 @@ const getTracking = defineTool({
   },
 });
 
+const findCustomerByPhone = defineTool({
+  name: "shipstation_find_customer_by_phone",
+  description:
+    "Find a ShipStation customer by phone, with order records when available.",
+  risk: "read",
+  requiresConfirmation: false,
+  execution: "server",
+  inputSchema: z.strictObject({
+    phone: z.string().min(7).max(40),
+    countryCode: z.string().max(4).optional(),
+  }),
+  outputSchema: PhoneSearchOutputSchema,
+  async handler(input, context) {
+    return createShipStationPhoneClient(
+      context.credentials,
+      context.signal,
+    ).findCustomerByPhone({
+      phone: input.phone,
+      ...(input.countryCode ? { countryCode: input.countryCode } : {}),
+    });
+  },
+});
+
 export const shipstationSkill = defineSkill({
   id: "shipstation",
   name: "ShipStation",
-  version: "1.0.0",
+  version: "1.1.0",
   instructions:
-    "Use ShipStation tools for shipment, carrier, service, recipient, and tracking facts. Preserve the configured API version's provider id. Do not infer tracking events that are absent. If a search reports incomplete: true, tell the agent the bounded scan may have missed older records.",
+    "Use ShipStation tools for shipment, carrier, service, recipient, tracking, and customer phone lookup facts. Preserve the configured API version's provider id. Do not infer tracking events that are absent. If a search reports incomplete: true, tell the agent the bounded scan may have missed older records.",
   credentials: [
     {
       settingName: "shipstation_mode",
@@ -247,7 +275,7 @@ export const shipstationSkill = defineSkill({
       secret: true,
     },
   ],
-  tools: [findOrders, getOrder, getTracking],
+  tools: [findOrders, getOrder, getTracking, findCustomerByPhone],
   isConfigured(credentials) {
     const mode = credentials.shipstationMode ?? "auto";
     if (mode === "v2") return Boolean(credentials.shipstationV2Key);

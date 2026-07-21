@@ -9,6 +9,7 @@ import {
   ChatController,
   type ChatState,
 } from "../features/chat/chat-controller";
+import { ActionProposal } from "../features/actions/ActionProposal";
 import { Composer } from "../features/chat/components/Composer";
 import { Conversation } from "../features/chat/components/Conversation";
 import { ErrorNotice } from "../features/chat/components/ErrorNotice";
@@ -18,7 +19,11 @@ import {
   getTicketContext,
   type ActiveTicketContext,
 } from "../features/ticket/ticket-context";
-import { executeZendeskTool } from "../features/zendesk-tools/executor";
+import {
+  executeConfirmedZendeskAction,
+  executeZendeskTool,
+  inspectZendeskProposal,
+} from "../features/zendesk-tools/executor";
 import { useZafClient } from "./ZafClientProvider";
 
 type View = "chat" | "history" | "skills" | "settings";
@@ -47,7 +52,10 @@ function Workspace({ ready }: { ready: ReadyApp }) {
     ready.controller.getSnapshot,
   );
   const busy =
-    state.status === "submitting" || state.status === "loading_history";
+    state.status === "submitting" ||
+    state.status === "confirming" ||
+    state.status === "loading_history" ||
+    Boolean(state.proposal);
 
   async function send(message: string) {
     await ready.controller.send(message, ready.context);
@@ -113,6 +121,15 @@ function Workspace({ ready }: { ready: ReadyApp }) {
       {view === "chat" && (
         <div className="chat-view">
           <Conversation messages={state.messages} />
+          {state.proposal && (
+            <ActionProposal
+              proposal={state.proposal}
+              onConfirm={() => {
+                void ready.controller.confirmAction();
+              }}
+              onCancel={() => ready.controller.cancelAction()}
+            />
+          )}
           {state.error && <ErrorNotice error={state.error} />}
           <Composer disabled={busy} onSend={send} />
         </div>
@@ -222,6 +239,14 @@ export function App() {
           worker,
           executeZendeskTool: (request) =>
             executeZendeskTool(client, request, settings.zendeskSubdomain),
+          inspectZendeskProposal: (proposal) =>
+            inspectZendeskProposal(client, proposal),
+          executeConfirmedZendeskAction: (request) =>
+            executeConfirmedZendeskAction(
+              client,
+              request,
+              settings.zendeskSubdomain,
+            ),
         });
         await controller.loadHistory(context.ticket.ticketId);
         if (active) setReady({ context, worker, controller, settings });

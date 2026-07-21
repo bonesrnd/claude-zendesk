@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Production React containment browser check</title>
+    <style>
+      body {
+        margin: 16px;
+        font-family: sans-serif;
+      }
+
+      iframe {
+        display: block;
+        width: 320px;
+        height: 5000px;
+        border: 1px solid #999;
+      }
+
+      output {
+        display: block;
+        margin-bottom: 12px;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <output id="result" data-status="running"
+      >Running browser layout check…</output
+    >
+    <iframe
+      id="viewport"
+      title="320px production React containment fixture"
+    ></iframe>
+    <script type="module">
+      const frame = document.querySelector("#viewport");
+      const result = document.querySelector("#result");
+      const forceRegression = new URLSearchParams(location.search).has(
+        "regression",
+      );
+      const frameUrl = new URL(
+        "./Conversation.browser.frame.html",
+        location.href,
+      );
+      frameUrl.search = location.search;
+
+      async function waitForProductionRender(documentUnderTest) {
+        for (let attempt = 0; attempt < 240; attempt += 1) {
+          if (documentUnderTest.documentElement.dataset.rendered === "true") {
+            return;
+          }
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+        throw new Error("Production React containment harness did not render");
+      }
+
+      frame.addEventListener(
+        "load",
+        async () => {
+          const documentUnderTest = frame.contentDocument;
+          await waitForProductionRender(documentUnderTest);
+          const root = documentUnderTest.querySelector("#root");
+          const rootRect = root.getBoundingClientRect();
+          const rootWidth = rootRect.width;
+          const documentScrollWidth = Math.max(
+            documentUnderTest.documentElement.scrollWidth,
+            documentUnderTest.body.scrollWidth,
+            root.scrollWidth,
+          );
+          const overflowingElements = [
+            ...documentUnderTest.querySelectorAll("#root, #root *"),
+          ]
+            .filter((element) => {
+              if (element.getClientRects().length === 0) return false;
+              const rect = element.getBoundingClientRect();
+              return (
+                rect.left < rootRect.left - 0.5 ||
+                rect.right > rootRect.right + 0.5
+              );
+            })
+            .map((element) => {
+              const browserCase = element.closest("[data-case]")?.dataset.case;
+              const selector = `${element.tagName.toLowerCase()}${element.className ? `.${String(element.className).replaceAll(" ", ".")}` : ""}`;
+              return browserCase ? `${browserCase}:${selector}` : selector;
+            });
+          const passed =
+            documentScrollWidth <= rootWidth + 0.5 &&
+            overflowingElements.length === 0;
+          const metrics = {
+            declaredViewportWidth: 320,
+            rootWidth,
+            documentScrollWidth,
+            overflowingElements,
+            checkedElements:
+              documentUnderTest.querySelectorAll("#root, #root *").length,
+            cases: [...documentUnderTest.querySelectorAll("[data-case]")].map(
+              (element) => element.dataset.case,
+            ),
+            forceRegression,
+          };
+
+          result.dataset.status = passed ? "pass" : "fail";
+          result.textContent = `${passed ? "PASS" : "FAIL"}\n${JSON.stringify(metrics, null, 2)}`;
+          document.title = `${passed ? "PASS" : "FAIL"} — chat containment`;
+          if (!passed) {
+            throw new Error(
+              `Chat containment failed: ${JSON.stringify(metrics)}`,
+            );
+          }
+        },
+        { once: true },
+      );
+
+      frame.src = frameUrl.href;
+    </script>
+  </body>
+</html>
